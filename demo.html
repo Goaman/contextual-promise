@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Promise Scope Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 2rem; }
+    h1 { color: #9cdcfe; margin-bottom: 1.5rem; font-size: 1.2rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .panel { background: #252526; border: 1px solid #3c3c3c; border-radius: 6px; overflow: hidden; }
+    .panel-title { background: #2d2d2d; padding: 0.6rem 1rem; color: #9cdcfe; font-size: 0.9rem; border-bottom: 1px solid #3c3c3c; }
+    .panel-body { padding: 1rem; min-height: 120px; }
+    .log { margin: 0.25rem 0; font-size: 0.85rem; white-space: pre; }
+    .ok { color: #4ec9b0; font-weight: bold; }
+    .wrong { color: #f44747; font-weight: bold; }
+    .muted { color: #808080; }
+  </style>
+</head>
+<body>
+  <h1>Promise Scope — naive rpc() vs cancellablePromise</h1>
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-title">Naive rpc() (colleague strategy)</div>
+      <div class="panel-body" id="naive"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">cancellablePromise (repo implementation)</div>
+      <div class="panel-body" id="contextual"></div>
+    </div>
+  </div>
+  <script src="cancellablePromise.js"></script>
+  <script src="demo.js"></script>
+</body>
+</html>
