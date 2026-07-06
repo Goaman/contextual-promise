@@ -5,7 +5,7 @@
 
 const IMPLS = [
     { name: 'naive rpc() (colleague strategy)', path: 'implementations/naive.js' },
-    { name: '00-original.js  (v4, current lib)', path: 'implementations/00-original.js' },
+    { name: '00-original.js  (v4)', path: 'implementations/00-original.js' },
     { name: '01-proxy.js  (v1)', path: 'implementations/01-proxy.js' },
     { name: '02-subclass.js  (v2)', path: 'implementations/02-subclass.js' },
     { name: '03-single-stamp.js  (v3)', path: 'implementations/03-single-stamp.js' },
