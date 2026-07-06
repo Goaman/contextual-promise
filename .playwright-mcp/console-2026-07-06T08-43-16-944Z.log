@@ -1,0 +1,13 @@
+[     121ms] [LOG] [implementations/naive.js] PART A  .then(callback):  OK @ http://localhost:8931/demo.js:100
+[     121ms] [LOG] [implementations/naive.js] PART B  async/await:      OK @ http://localhost:8931/demo.js:100
+[     171ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8931/favicon.ico:0
+[     174ms] [LOG] [implementations/00-original.js] PART A  .then(callback):  OK @ http://localhost:8931/demo.js:100
+[     174ms] [LOG] [implementations/00-original.js] PART B  async/await:      OK @ http://localhost:8931/demo.js:100
+[     248ms] [LOG] [implementations/01-proxy.js] PART A  .then(callback):  OK @ http://localhost:8931/demo.js:100
+[     248ms] [LOG] [implementations/01-proxy.js] PART B  async/await:      OK @ http://localhost:8931/demo.js:100
+[     370ms] [LOG] [implementations/02-subclass.js] PART A  .then(callback):  OK @ http://localhost:8931/demo.js:100
+[     370ms] [LOG] [implementations/02-subclass.js] PART B  async/await:      OK @ http://localhost:8931/demo.js:100
+[     466ms] [LOG] [implementations/03-single-stamp.js] PART A  .then(callback):  OK @ http://localhost:8931/demo.js:100
+[     466ms] [LOG] [implementations/03-single-stamp.js] PART B  async/await:      OK @ http://localhost:8931/demo.js:100
+[     540ms] [LOG] [implementations/04-v4-sandwich-always.js] PART A  .then(callback):  OK @ http://localhost:8931/demo.js:100
+[     540ms] [LOG] [implementations/04-v4-sandwich-always.js] PART B  async/await:      OK @ http://localhost:8931/demo.js:100

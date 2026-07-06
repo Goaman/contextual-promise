@@ -1,0 +1,24 @@
+[      95ms] [LOG] [implementations/naive.js] PART A  .then(callback):          OK @ http://localhost:8931/demo.js:117
+[      95ms] [LOG] [implementations/naive.js] PART B  async/await:              OK @ http://localhost:8931/demo.js:117
+[      95ms] [LOG] [implementations/naive.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8931/demo.js:117
+[      95ms] [LOG] [implementations/naive.js] PART C  await Promise.resolve(…): LOST  (saw undefined) @ http://localhost:8931/demo.js:117
+[     133ms] [LOG] [implementations/00-original.js] PART A  .then(callback):          OK @ http://localhost:8931/demo.js:117
+[     133ms] [LOG] [implementations/00-original.js] PART B  async/await:              OK @ http://localhost:8931/demo.js:117
+[     134ms] [LOG] [implementations/00-original.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8931/demo.js:117
+[     134ms] [LOG] [implementations/00-original.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8931/demo.js:117
+[     176ms] [LOG] [implementations/01-proxy.js] PART A  .then(callback):          OK @ http://localhost:8931/demo.js:117
+[     177ms] [LOG] [implementations/01-proxy.js] PART B  async/await:              OK @ http://localhost:8931/demo.js:117
+[     177ms] [LOG] [implementations/01-proxy.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8931/demo.js:117
+[     177ms] [LOG] [implementations/01-proxy.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8931/demo.js:117
+[     215ms] [LOG] [implementations/02-subclass.js] PART A  .then(callback):          OK @ http://localhost:8931/demo.js:117
+[     215ms] [LOG] [implementations/02-subclass.js] PART B  async/await:              OK @ http://localhost:8931/demo.js:117
+[     215ms] [LOG] [implementations/02-subclass.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8931/demo.js:117
+[     215ms] [LOG] [implementations/02-subclass.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8931/demo.js:117
+[     258ms] [LOG] [implementations/03-single-stamp.js] PART A  .then(callback):          OK @ http://localhost:8931/demo.js:117
+[     258ms] [LOG] [implementations/03-single-stamp.js] PART B  async/await:              OK @ http://localhost:8931/demo.js:117
+[     258ms] [LOG] [implementations/03-single-stamp.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8931/demo.js:117
+[     258ms] [LOG] [implementations/03-single-stamp.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8931/demo.js:117
+[     298ms] [LOG] [implementations/04-v4-sandwich-always.js] PART A  .then(callback):          OK @ http://localhost:8931/demo.js:117
+[     298ms] [LOG] [implementations/04-v4-sandwich-always.js] PART B  async/await:              OK @ http://localhost:8931/demo.js:117
+[     298ms] [LOG] [implementations/04-v4-sandwich-always.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8931/demo.js:117
+[     298ms] [LOG] [implementations/04-v4-sandwich-always.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8931/demo.js:117

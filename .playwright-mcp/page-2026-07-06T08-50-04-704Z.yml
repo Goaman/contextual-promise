@@ -1,0 +1,45 @@
+- generic [active] [ref=f7e1]:
+  - heading "Promise Scope — every implementation, side by side" [level=1] [ref=f7e2]
+  - paragraph [ref=f7e3]:
+    - text: "A & B: two interleaved scopes S1 & S2 across a"
+    - code [ref=f7e4]: .then()
+    - text: chain and native
+    - code [ref=f7e5]: async/await
+    - text: "— OK = each continuation saw its own scope. C: does context survive one layer of async composition ("
+    - code [ref=f7e6]: something()
+    - text: awaits async
+    - code [ref=f7e7]: blip()
+    - text: )? A bare
+    - code [ref=f7e8]: await blip()
+    - text: awaits a native promise and is lost by everyone (hard userland wall); re-stamping via
+    - code [ref=f7e9]: Promise.resolve(blip())
+    - text: is recovered by the patched impls but never by naive.
+  - generic [ref=f7e10]:
+    - generic [ref=f7e11]:
+      - generic [ref=f7e12]: naive rpc() (colleague strategy)
+      - generic [ref=f7e13]:
+        - generic [ref=f7e14]: "PART A .then(callback): OK"
+        - generic [ref=f7e15]: "PART B async/await: OK"
+        - generic [ref=f7e16]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f7e17]: "PART C await Promise.resolve(…): LOST (saw undefined)"
+    - generic [ref=f7e18]:
+      - generic [ref=f7e19]: 00-original.js (v4, current lib)
+      - generic [ref=f7e20]:
+        - generic [ref=f7e21]: "PART A .then(callback): OK"
+        - generic [ref=f7e22]: "PART B async/await: OK"
+        - generic [ref=f7e23]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f7e24]: "PART C await Promise.resolve(…): OK (saw CTX)"
+    - generic [ref=f7e25]:
+      - generic [ref=f7e26]: 01-proxy.js (v1)
+      - generic [ref=f7e27]:
+        - generic [ref=f7e28]: "PART A .then(callback): OK"
+        - generic [ref=f7e29]: "PART B async/await: OK"
+        - generic [ref=f7e30]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f7e31]: "PART C await Promise.resolve(…): OK (saw CTX)"
+    - generic [ref=f7e32]:
+      - generic [ref=f7e33]: 02-subclass.js (v2)
+      - generic [ref=f7e34]:
+        - generic [ref=f7e35]: "PART A .then(callback): OK"
+        - generic [ref=f7e36]: "PART B async/await: OK"
+        - generic [ref=f7e37]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f7e38]: "PART C await Promise.resolve(…): OK (saw CTX)"
