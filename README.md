@@ -177,8 +177,8 @@ v4 (`00-original.js`):
   (`Promise.resolve(fetch(...))` re-stamps it). **Solved by v5.**
 - Await semantics are resolver-side: awaiting a scoped promise from outside
   any scope runs the awaiter's continuation in the *promise's* scope until the
-  next bare native await cuts the chain (transient leak). **Solved by v5**
-  (awaiter-side capture; out-of-scope awaits stay native).
+  next bare native await cuts the chain (transient leak — demo Part D).
+  **Solved by v5** (awaiter-side capture; out-of-scope awaits stay native).
 - Tracked promises answer `p.constructor === Promise` with their context
   object, which can confuse code that inspects `constructor`.
 

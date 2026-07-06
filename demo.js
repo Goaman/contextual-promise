@@ -20,6 +20,8 @@ const verdict = (s) =>
 
 const cverdict = (v) => (v === 'CTX' ? 'OK  (saw CTX)' : `LOST  (saw ${JSON.stringify(v)})`);
 
+const dverdict = (v) => (v == null ? 'OK  (stayed clean)' : `LEAK  (awaiter saw ${JSON.stringify(v)})`);
+
 // The probe runs *inside* each impl's iframe. It uses the uniform interface
 // every implementation exposes on window: install / uninstall / effect /
 // getCurrent, plus an optional rpc() (the naive strategy needs its bespoke
@@ -62,6 +64,18 @@ function runnerSource() {
           async function nestRestamp() { await Promise.resolve(blip()); return getCurrent(); }
           out.Cbare = await effect('CTX', () => nestBare());
           out.Crestamp = await effect('CTX', () => nestRestamp());
+        }
+        // PART D: the flip side of C — awaiting a SCOPED promise from OUTSIDE
+        // any scope. Resolver-side designs (the naive thenable and the stamp
+        // impls v1-v4) restore the promise's CREATION scope around whoever
+        // awaits it, so the scope leaks into an awaiter that never entered it
+        // (transiently: the next bare native await cuts the chain — which is
+        // the only reason v4's leak-check test ever passed). Awaiter-side
+        // capture (v5) resumes out-of-scope awaiters natively: clean.
+        {
+          await effect('S1', () => rpc());
+          const leaked = getCurrent();
+          out.D = leaked === undefined ? null : leaked;
         }
         uninstall();
         parent.postMessage({ __probe: RUN_ID, out }, '*');
@@ -116,7 +130,7 @@ function renderPanel(impl, data) {
 
     const line = (msg) => {
         const div = document.createElement('div');
-        div.className = 'log ' + (msg.includes('OK') ? 'ok' : /WRONG|ERROR|LOST/.test(msg) ? 'wrong' : 'muted');
+        div.className = 'log ' + (msg.includes('OK') ? 'ok' : /WRONG|ERROR|LOST|LEAK/.test(msg) ? 'wrong' : 'muted');
         div.textContent = msg;
         body.appendChild(div);
         console.log(`[${impl.path}]`, msg);
@@ -129,6 +143,7 @@ function renderPanel(impl, data) {
         line('PART B  async/await:              ' + verdict(data.out.B));
         line('PART C  await blip() (bare):      ' + cverdict(data.out.Cbare));
         line('PART C  await Promise.resolve(…): ' + cverdict(data.out.Crestamp));
+        line('PART D  await scoped from outside ' + dverdict(data.out.D));
     }
     document.getElementById('panels').appendChild(panel);
 }

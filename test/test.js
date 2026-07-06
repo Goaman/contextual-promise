@@ -73,8 +73,16 @@ const rpc = () => Promise.resolve();
     assert.deepStrictEqual(seen, { S1: 'S1', S2: 'S2' }, 'G');
     await new Promise((r) => setTimeout(r, 20));
     assert.strictEqual(getCurrent(), undefined, 'G: context stack not balanced');
+
+    // H: awaiter-side semantics — awaiting a scoped promise from OUTSIDE any
+    // scope must not leak the scope into the awaiter. (Resolver-side impls
+    // leak here transiently, until the next bare native await cuts the chain.)
+    await effect('S1', () => rpc());
+    console.log('H outside await    ', JSON.stringify(getCurrent()));
+    assert.strictEqual(getCurrent(), undefined, 'H: scope leaked into outside awaiter');
   } else {
     console.log('G bare composition  skipped (impl declares the limitation)');
+    console.log('H outside await     skipped (impl declares the limitation)');
   }
 
   console.log('ALL PASS');
