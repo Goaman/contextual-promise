@@ -15,6 +15,7 @@ const { runProbes } = require(path.join(__dirname, '..', 'probes.js'));
     effect: window.effect,
     getCurrent: window.getCurrent,
     rpc: window.rpc,
+    effectCancellable: window.effectCancellable,
   });
 
   // A / B / C-restamp hold for every context-propagating impl.
@@ -50,6 +51,23 @@ const { runProbes } = require(path.join(__dirname, '..', 'probes.js'));
   } else {
     console.log('PART E shared promise         ', `{ A: ${out.E.A}, B: ${out.E.B} }`,
       (out.E.A === 'A' && out.E.B === 'B') ? '(OK)' : '(known limitation — no per-awaiter context on a shared promise)');
+  }
+
+  // PART F: cancellation × the shared await of Part E — cancel S1 while S1 and
+  // S2 both await one in-flight gate created inside S1. Ideal: S1's
+  // continuation skipped, S2 resumes in its own scope. Per-awaiter impls (v6)
+  // assert it; the rest report their failure mode (S2 hung, or the cancelled
+  // scope running) for diagnosis. Every impl with a handle must at least NEVER
+  // resume the cancelled scope in its own name.
+  if (out.F === null) {
+    console.log('PART F cancel × shared await   n/a (no cancellation handle)');
+  } else if (window.SUPPORTS_PER_AWAITER_CONTEXT) {
+    console.log('PART F cancel × shared await  ', JSON.stringify(out.F));
+    assert.deepStrictEqual(out.F, { S1: 'skipped', S2: 'S2' }, 'Part F: cancellation must skip exactly the cancelled scope');
+  } else {
+    console.log('PART F cancel × shared await  ', JSON.stringify(out.F),
+      (out.F.S1 === 'skipped' && out.F.S2 === 'S2') ? '(OK)' : '(known limitation — see probes.js Part F)');
+    assert.notStrictEqual(out.F.S1, 'S1', 'Part F: a cancelled scope must never resume as itself');
   }
 
   // Invariant: once everything has settled, no scope is left on the stack.

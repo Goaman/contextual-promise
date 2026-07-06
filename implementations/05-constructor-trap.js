@@ -259,6 +259,19 @@ window.effect = (scopeName, fn) => {
     try { return fn(); } finally { execContexts.pop(); }
 };
 
+// Like effect(), but returns { result, cancel }: cancel() flips the scope's
+// `cancelled` flag, after which _exec skips every continuation bracketed by
+// this scope — the lib's skip-callback cancellation (probe Part F).
+window.effectCancellable = (scopeName, fn) => {
+    const context = new ExecContext(scopeName);
+    execContexts.push(context);
+    try {
+        return { result: fn(), cancel: () => { context.cancelled = true; } };
+    } finally {
+        execContexts.pop();
+    }
+};
+
 window.getCurrent = () => execContexts[execContexts.length - 1]?.scopeName;
 
 // Context survives a bare `await` on an untracked native promise (the

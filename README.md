@@ -14,7 +14,7 @@ implementations/01-proxy.js      v1: Proxy + global Promise.prototype.then patch
 implementations/02-subclass.js   v2: class ContextPromise extends Promise
 implementations/03-single-stamp.js  v3: constructor-as-context stamp + global then patch
 implementations/04-v4-sandwich-always.js  v4 with the sandwich on every wrapped hop
-test/test.js                     correctness suite (7 cases, incl. interleaved & bare-composition await)
+test/test.js                     correctness suite — asserts the shared probes A–F (probes.js)
 bench/single-process-bench.js    first benchmark: pristine vs patched vs after-uninstall
 bench/bench-one.js               one mode, self-baselined vs pristine native
 bench/bench-all.js               full matrix, one process per mode
@@ -121,6 +121,76 @@ bracketing its own resumption with its own scope. Userland `.then()` reads
 find an empty slot and get the ordinary patched then (creation-context
 semantics, unchanged).
 
+Per-awaiter identity is what makes **cancellation** compose with sharing
+(demo Part F: cancel S1 while S1 and S2 both await one in-flight gate created
+inside S1). Resolver-side impls bracket *both* resumptions with the gate's
+creation scope, so cancelling S1 silently swallows innocent S2's await — it
+never resumes. v5's shared slot is worse: the captures cross over, the
+*cancelled* scope's continuation runs (bracketed as S2) and the live scope
+hangs. v6 skips exactly the cancelled awaiter and resumes the other in its
+own scope. The suite asserts a floor invariant for every impl with a
+cancellation handle: a cancelled scope must never resume as itself.
+
+## Portability — every engine, and across time
+
+Every browser on the caniuse bar reduces to three JS engines: **V8** (Chrome,
+Edge, Opera, Samsung Internet, QQ/Baidu/Android browsers, KaiOS 3),
+**JavaScriptCore** (Safari, Safari iOS — and *every* iOS browser, since iOS
+mandates WebKit), and **SpiderMonkey** (Firefox, KaiOS ≤2.5). IE and Opera
+Mini (extreme mode) have no native promises or async/await, so the lib is
+inapplicable there by construction, not broken.
+
+**Why the hooks are engine-proof:** both interception points are *observable
+operations mandated by ECMA-262* — not implementation details:
+
+- `Await(value)` → `PromiseResolve(%Promise%, value)` performs
+  `Get(value, "constructor")` (§27.2.4.7.1 step 2.a);
+- the Promise Resolve Functions perform `Get(resolution, "then")`
+  (§27.2.1.3.2 step 9) and the enqueued PromiseResolveThenableJob calls
+  exactly the fetched function.
+
+An engine may only skip these Gets while it can *prove* them unobservable.
+Installing the accessors destroys that proof, so a conformant engine — today's
+or a future one — must call them. The FIFO sandwich rests on an equally
+normative guarantee: the WHATWG HTML spec defines ONE microtask queue, FIFO,
+shared by promise reaction jobs and `queueMicrotask` callbacks.
+
+**Verified in each engine's source** (the "proof machinery" differs, the
+conclusion doesn't):
+
+| engine | skip-guard for the constructor Get | skip-guard for the then Get |
+|---|---|---|
+| V8 | `src/builtins/builtins-async-gen.cc` `Await`: initial `Promise.prototype` + species protector (killed by any own-prop stamp) | `promise-resolve.tq` `ResolvePromise`: then-protector + initial map |
+| SpiderMonkey | `js/src/builtin/Promise.cpp` `CommonStaticResolveRejectImpl`: **no guard — Get is unconditional per spec**; only `CanSkipAwait` (fulfilled-promise shortcut) is guarded by `optimizePromiseLookupFuse` (watches `Promise.prototype`'s `constructor`/`then`) + `promise->empty()` (no own props) | `ResolvePromiseInternal`: observable `GetThenValue`; the builtin-job shortcut requires the *fetched* `then` to be the native `Promise_then` — ours never is |
+| JavaScriptCore | `runtime/JSPromise.cpp` `resolveWithInternalMicrotaskForAsyncAwait`: species watchpoint, installed on `Promise.prototype`'s `constructor` property (`JSGlobalObject.cpp` `tryInstallSpeciesWatchpoint`) — our accessor fires it | `isThenFastAndNonObservable()`: global then-watchpoint **and** a per-object structure check (`getDirectOffset(then)`) that own-`then` stamps fail |
+
+**Verified empirically** — the full 8-impl × 7-probe matrix run via Playwright
+in Chromium 149 (V8), Firefox 151 (SpiderMonkey) and WebKit 26.5 (JSC):
+identical verdicts in all three, down to the failure modes of the older
+impls; v6 is 7/7 everywhere.
+
+**Syntax/API floor:** `06-one-shot-then.js` is kept at ES2017 — the oldest
+baseline where the lib can matter at all (async/await: Chrome 55, Safari
+10.1, Firefox 52). No optional chaining, and `queueMicrotask` (2019) falls
+back to a reaction job on a pristine pre-install native promise — same
+microtask queue, same FIFO, per the HTML spec.
+
+**Residual risks across time** (honest list):
+
+- A TC39 *normative* change to Await's promise-coercion could move the hook —
+  it has happened once (the 2018 "await optimization", PR #1250, which is
+  what created the current single-Get shape). Such changes are
+  web-observability-reviewed and rare; this lib's hooks would need a
+  one-file adjustment, and the probe suite would catch it immediately.
+- `await <non-thenable>` (e.g. `await 42`) performs **no observable operation
+  at all** (§27.2.4.7.1 step 1 short-circuits before any Get) — context after
+  such an await is lost in every impl, in every engine, forever. That is the
+  one true remaining wall; only TC39 `AsyncContext` (the sanctioned,
+  engine-level future) crosses it.
+- Engines keep adding promise fast paths, but always behind
+  protector/fuse/watchpoint machinery precisely so that observable mutations
+  like ours force the spec path — that's what all three tables above are.
+
 ## Implementation history
 
 | version | design | tracked awaitLoop | why superseded |
@@ -217,6 +287,10 @@ v4 (`00-original.js`):
   **Solved by v5** (awaiter-side capture; out-of-scope awaits stay native).
 - Tracked promises answer `p.constructor === Promise` with their context
   object, which can confuse code that inspects `constructor`.
+- Cancellation is scoped to the promise's *creation* context: cancelling a
+  scope swallows every continuation of promises it created — including other
+  scopes' awaits of a shared one, which then hang forever (demo Part F).
+  **Solved by v6** (per-awaiter skip).
 
 v5 (`05-constructor-trap.js`) and v6 (`06-one-shot-then.js`):
 

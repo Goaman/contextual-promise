@@ -25,6 +25,7 @@ const IMPLS = [
 const CODE = {
     A: Probes.PARTS.A, B: Probes.PARTS.B,
     Cbare: Probes.PARTS.C, Crestamp: Probes.PARTS.C, D: Probes.PARTS.D, E: Probes.PARTS.E,
+    F: Probes.PARTS.F,
     awaitLoop: Scenarios.SCENARIOS.awaitLoop, thenChain: Scenarios.SCENARIOS.thenChain,
     fanout: Scenarios.SCENARIOS.fanout, awaitWork: Scenarios.SCENARIOS.awaitWork,
     rpcTimer: Scenarios.SCENARIOS.rpcTimer,
@@ -106,6 +107,17 @@ const everdict = (s) =>
         ? 'OK  (A→A, B→B)'
         : `SHARED  (A saw ${JSON.stringify(s.A)}, B saw ${JSON.stringify(s.B)})`;
 
+// PART F: cancel S1 while S1 and S2 both await one in-flight gate created in
+// S1. Ideal: S1 skipped, S2 resumes in S2 (v6). Failure modes: S2 hung
+// (resolver-side skips both) or the cancelled S1 running anyway (v5's slot).
+const fverdict = (s) => {
+    if (s == null) return 'n/a  (no cancellation handle)';
+    if (s.S1 === 'skipped' && s.S2 === 'S2') return 'OK  (S1 skipped, S2→S2)';
+    const s1 = s.S1 === 'skipped' ? 'S1 skipped' : `cancelled S1 RAN (saw ${JSON.stringify(s.S1)})`;
+    const s2 = s.S2 === 'hung' ? 'S2 HUNG' : `S2 saw ${JSON.stringify(s.S2)}`;
+    return `WRONG  (${s1}, ${s2})`;
+};
+
 // The runner runs *inside* each impl's iframe. probes.js (loaded alongside the
 // impl) defines window.runProbes; we just hand it the uniform interface every
 // implementation exposes on window (install / uninstall / effect / getCurrent,
@@ -120,6 +132,7 @@ function runnerSource() {
           effect: window.effect,
           getCurrent: window.getCurrent,
           rpc: window.rpc,
+          effectCancellable: window.effectCancellable,
         });
         uninstall();
         parent.postMessage({ __probe: RUN_ID, out }, '*');
@@ -195,6 +208,7 @@ function renderPanel(impl, data) {
         line('PART C  await Promise.resolve(…): ' + cverdict(data.out.Crestamp), 'Crestamp');
         line('PART D  await scoped from outside ' + dverdict(data.out.D), 'D');
         line('PART E  shared promise, two scopes ' + everdict(data.out.E), 'E');
+        line('PART F  cancel S1, S2 same await   ' + fverdict(data.out.F), 'F');
     }
     document.getElementById('panels').appendChild(panel);
 }

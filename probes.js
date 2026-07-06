@@ -87,6 +87,33 @@ const PARTS = {
         ]);
         return seen; // ideal: { A: 'A', B: 'B' } — reached by v6 (one-shot then)
     },
+
+    // PART F: CANCELLATION — the lib's headline feature — crossed with the
+    // shared promise of Part E. Scope S1 opens a gate (an in-flight request)
+    // and awaits it; scope S2 awaits the SAME gate; S1 is cancelled BEFORE the
+    // gate opens. Ideal: S1's continuation is skipped, S2's still runs in S2.
+    //   - Resolver-side impls (v1-v4) bracket BOTH resumptions with the gate's
+    //     creation scope (S1, now cancelled): S1 is skipped, but innocent S2's
+    //     resume is swallowed too — its await simply never resumes (HUNG).
+    //   - v5 (single slot) is worse: S2's capture overwrote S1's, so the
+    //     CANCELLED scope's continuation runs (bracketed as S2!) while S2's own
+    //     falls back to the creation scope S1 (cancelled) and hangs.
+    //   - v6's per-awaiter one-shot skips exactly S1 and resumes S2 in S2.
+    // Impls without a cancellation handle (naive) return null → n/a.
+    async F({ effect, getCurrent, effectCancellable }) {
+        if (!effectCancellable) return null;
+        let release, gate;
+        const seen = { S1: 'skipped', S2: 'hung' }; // overwritten by whatever runs
+        const h1 = effectCancellable('S1', () => {
+            gate = new Promise((r) => (release = r));   // created INSIDE S1
+            return (async () => { await gate; seen.S1 = getCurrent() ?? null; })();
+        });
+        effect('S2', () => (async () => { await gate; seen.S2 = getCurrent() ?? null; })());
+        h1.cancel();                                    // S1 dies while in flight
+        release();                                      // now the gate opens
+        await new Promise((r) => setTimeout(r, 50));    // let every survivor run
+        return seen; // ideal: { S1: 'skipped', S2: 'S2' } — reached by v6
+    },
 };
 
 // Run every part against `env` and flatten C into { Cbare, Crestamp }.
@@ -95,13 +122,15 @@ async function runProbes(env) {
         effect: env.effect,
         getCurrent: env.getCurrent,
         rpc: env.rpc || (() => Promise.resolve()),
+        effectCancellable: env.effectCancellable,
     };
     const A = await PARTS.A(e);
     const B = await PARTS.B(e);
     const C = await PARTS.C(e);
     const D = await PARTS.D(e);
     const E = await PARTS.E(e);
-    return { A, B, Cbare: C.Cbare, Crestamp: C.Crestamp, D, E };
+    const F = await PARTS.F(e);
+    return { A, B, Cbare: C.Cbare, Crestamp: C.Crestamp, D, E, F };
 }
 
 // Dual-target export: Node (test/test.js) via require, browser (index.js and

@@ -39,6 +39,18 @@ const execContexts = [];
 const NativePromise = Promise;
 const nativeThen = NativePromise.prototype.then;
 
+// Syntax/API floor is ES2017 (async/await, the oldest engines this lib can
+// matter on: Chrome 55, Safari 10.1, Firefox 52): no optional chaining, and
+// queueMicrotask (2019) gets a fallback through a pristine native promise —
+// per the HTML spec, promise reaction jobs and queueMicrotask callbacks share
+// the ONE microtask queue, so FIFO ordering (the sandwich invariant) is
+// identical either way.
+const microtaskSource = NativePromise.resolve(); // created before install: untracked
+const queueJob =
+    typeof queueMicrotask === "function"
+        ? queueMicrotask
+        : (job) => nativeThen.call(microtaskSource, job);
+
 class ExecContext {
     constructor(scopeName) {
         this.cancelled = false;
@@ -140,12 +152,12 @@ const _exec = (ctx, cb, v, sandwich) => {
         // resumes in a later microtask): bracket the jobs it enqueues with a
         // queued push/pop pair — FIFO order puts them right around those jobs.
         pendingCtx.push(ctx);
-        queueMicrotask(pushJob);
+        queueJob(pushJob);
     }
     try {
         return cb(v);
     } finally {
-        if (sandwich) queueMicrotask(popJob);
+        if (sandwich) queueJob(popJob);
         execContexts.pop();
     }
 };
@@ -237,7 +249,7 @@ PatchedPromise.all = function (items) {
             const item = arr[i];
             if (item instanceof NativePromise) {
                 settle(item, i);
-            } else if (item !== null && typeof item?.then === "function") {
+            } else if (item != null && typeof item.then === "function") {
                 settle(NativePromise.resolve(item), i);
             } else {
                 out[i] = item;
@@ -280,7 +292,23 @@ window.effect = (scopeName, fn) => {
     try { return fn(); } finally { execContexts.pop(); }
 };
 
-window.getCurrent = () => execContexts[execContexts.length - 1]?.scopeName;
+// Like effect(), but returns { result, cancel }: cancel() flips the scope's
+// `cancelled` flag, after which _exec skips every continuation bracketed by
+// this scope — the lib's skip-callback cancellation (probe Part F).
+window.effectCancellable = (scopeName, fn) => {
+    const context = new ExecContext(scopeName);
+    execContexts.push(context);
+    try {
+        return { result: fn(), cancel: () => { context.cancelled = true; } };
+    } finally {
+        execContexts.pop();
+    }
+};
+
+window.getCurrent = () => {
+    const ctx = execContexts[execContexts.length - 1];
+    return ctx === undefined ? undefined : ctx.scopeName;
+};
 
 // Context survives a bare `await` on an untracked native promise (the
 // constructor trap), and each awaiter of a SHARED promise resumes in its own
