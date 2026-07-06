@@ -11,6 +11,7 @@ const IMPLS = [
     { name: '03-single-stamp.js  (v3)', path: 'implementations/03-single-stamp.js' },
     { name: '04-v4-sandwich-always.js', path: 'implementations/04-v4-sandwich-always.js' },
     { name: '05-constructor-trap.js  (v5, awaiter-side)', path: 'implementations/05-constructor-trap.js' },
+    { name: '06-one-shot-then.js  (v6, per-awaiter)', path: 'implementations/06-one-shot-then.js' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -98,8 +99,8 @@ const cverdict = (v) => (v === 'CTX' ? 'OK  (saw CTX)' : `LOST  (saw ${JSON.stri
 
 const dverdict = (v) => (v == null ? 'OK  (stayed clean)' : `LEAK  (awaiter saw ${JSON.stringify(v)})`);
 
-// PART E: one shared promise awaited by scopes A and B. Ideal is A→A, B→B; no
-// impl reaches it yet, so surface exactly what each returned.
+// PART E: one shared promise awaited by scopes A and B. Ideal is A→A, B→B —
+// reached by v6's one-shot then; every other impl shows what it returns instead.
 const everdict = (s) =>
     s.A === 'A' && s.B === 'B'
         ? 'OK  (A→A, B→B)'

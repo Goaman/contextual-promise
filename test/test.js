@@ -41,11 +41,16 @@ const { runProbes } = require(path.join(__dirname, '..', 'probes.js'));
   }
 
   // PART E: one shared promise awaited by two scopes at once. Ideal is
-  // { A: 'A', B: 'B' }, but a shared promise has a single identity and no impl
-  // resolves per-awaiter context here yet (v5 documents the limitation), so
-  // this is reported for diagnosis, not asserted.
-  console.log('PART E shared promise         ', `{ A: ${out.E.A}, B: ${out.E.B} }`,
-    (out.E.A === 'A' && out.E.B === 'B') ? '(OK)' : '(known limitation — no per-awaiter context on a shared promise)');
+  // { A: 'A', B: 'B' } — per-awaiter impls (v6's one-shot then) assert it;
+  // for the rest a shared promise has a single identity (v5's single pending
+  // slot documents the limitation), so it's reported for diagnosis only.
+  if (window.SUPPORTS_PER_AWAITER_CONTEXT) {
+    console.log('PART E shared promise         ', JSON.stringify(out.E));
+    assert.deepStrictEqual(out.E, { A: 'A', B: 'B' }, 'Part E: per-awaiter context on a shared promise');
+  } else {
+    console.log('PART E shared promise         ', `{ A: ${out.E.A}, B: ${out.E.B} }`,
+      (out.E.A === 'A' && out.E.B === 'B') ? '(OK)' : '(known limitation — no per-awaiter context on a shared promise)');
+  }
 
   // Invariant: once everything has settled, no scope is left on the stack.
   await new Promise((r) => setTimeout(r, 20));

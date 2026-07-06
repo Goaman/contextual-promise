@@ -67,12 +67,13 @@ const PARTS = {
     //     resumptions with the promise's ONE creation context (here: none — it
     //     was made outside any scope), so both awaiters see the same wrong scope.
     //   - Awaiter-side v5 records context per-await, but into a SINGLE pending
-    //     slot on the promise: the second `await` overwrites the first, so the
-    //     resume that fires first wins the (now shared) slot and the other falls
-    //     back to the creation context. v5 documents this as a known limitation.
-    // So NO impl currently returns the correct { A: 'A', B: 'B' } — this probe
-    // exists to show exactly what each one *does* return (e.g. A saw B, B saw
-    // undefined). Fixing it needs a per-promise queue of awaiter contexts.
+    //     slot on the promise, consumed later by the thenable JOB: the second
+    //     `await` overwrites the first before either job runs, so A resumes in
+    //     B's scope and B falls back to the creation context (undefined).
+    //   - v6 consumes the slot at the SYNCHRONOUS Get(value, "then") inside
+    //     each await's own suspension sequence and hands the thenable job a
+    //     one-shot closure bound to that awaiter's context: N awaiters of one
+    //     promise get N closures — { A: 'A', B: 'B' }.
     async E({ effect, getCurrent, rpc }) {
         const shared = rpc(); // created OUTSIDE any scope; awaited by both below
         const seen = {};

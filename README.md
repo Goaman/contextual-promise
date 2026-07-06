@@ -7,7 +7,8 @@ cancellation — plus every experiment and benchmark used to design it.
 ```
 index.html / index.js              side-by-side demo: runs every implementation below
 implementations/00-original.js   stamp-based implementation ("v4") — see below
-implementations/05-constructor-trap.js  current ("v5"): v4 + awaiter-side constructor trap — bare `await` works
+implementations/05-constructor-trap.js  v5: v4 + awaiter-side constructor trap — bare `await` works
+implementations/06-one-shot-then.js  current ("v6"): v5 + one-shot then — per-awaiter context on shared promises
 implementations/00-naive.js         naive userland thenable (no Promise patch) — the strawman
 implementations/01-proxy.js      v1: Proxy + global Promise.prototype.then patch
 implementations/02-subclass.js   v2: class ContextPromise extends Promise
@@ -91,6 +92,35 @@ suspension point**, i.e. the awaiter's own scope — the same semantics as
 scope; `.then(cb)` callbacks keep the promise's creation scope (what
 skip-callback cancellation wants).
 
+## Per-awaiter context on a shared promise (v6)
+
+One promise, many awaiters — a "ready" signal, a deduped in-flight request —
+awaited from several scopes at once (demo Part E). v5 captures per-await but
+parks the context in a **single slot on the promise**, consumed later by the
+thenable *job*: with two awaiters in one synchronous burst, both jobs are
+enqueued before either runs, so the second capture overwrites the first
+(A resumes in B's scope, B falls back to nothing).
+
+The fix (`implementations/06-one-shot-then.js`) rides on the atomicity of one
+await's suspension sequence. Everything between the two observable lookups is
+synchronous engine work with no interleaving point:
+
+```
+Get(value, "constructor")   ← trap parks the awaiter's context on the promise
+NewJSPromise (wrapper)
+ResolvePromise(wrapper, value)
+  Get(value, "then")        ← still the same awaiter's sync window
+  enqueue PromiseResolveThenableJob(wrapper, value, thenAction)
+```
+
+So v6 makes the promise's own `then` an **accessor** as well: its getter
+consumes the parked context immediately — before any other awaiter can run —
+and returns a **one-shot closure** bound to it. The enqueued job holds the
+closure, not a shared slot: N awaiters of one promise get N closures, each
+bracketing its own resumption with its own scope. Userland `.then()` reads
+find an empty slot and get the ordinary patched then (creation-context
+semantics, unchanged).
+
 ## Implementation history
 
 | version | design | tracked awaitLoop | why superseded |
@@ -99,7 +129,8 @@ skip-callback cancellation wants).
 | v2 subclass | `class ContextPromise extends Promise` | 10x | every creation goes through slow derived-constructor + capability path |
 | v3 single-stamp | context object stored AS `constructor` (1 own prop), no Proxy | 7.6x | still patched global `Promise.prototype.then` |
 | v4 | v3 + patched `then` as an **own property on tracked promises only** — global prototype never touched | 7.6x | bare `await` on engine-created promises (async fn results, `fetch()`) loses context; resolver-side await semantics leak scopes into outside awaiters |
-| **v5 (current)** | v4 + `Promise.prototype.constructor` accessor capturing the **awaiter's** context at the suspension point | ~v4 (8.8x vs same-run v4 7.9x) | — (cost: the getter fires on every constructor lookup isolate-wide; untracked bare hops ~+35% vs v4) |
+| v5 | v4 + `Promise.prototype.constructor` accessor capturing the **awaiter's** context at the suspension point | ~v4 (8.8x vs same-run v4 7.9x) | single pending slot per promise: two scopes awaiting one shared promise → second capture wins for both (Part E) |
+| **v6 (current)** | v5 + own `then` as accessor consuming the parked context **synchronously per await** → one-shot closure per awaiter | 10.1x (thenChain 9.1x) | — (cost: a getter call on every `then` read of tracked promises; untracked unchanged vs v5) |
 
 ## Microbenchmark results (node v23.10.0, 100k promises, median of 7)
 
@@ -119,12 +150,17 @@ Ratios vs pristine native measured in the same process before the lib loads.
 | v5-trap tracked ¹ | 8.84x | 6.98x | 3.85x | 1.19x | 3.44x |
 | v5-trap untracked ¹ | 2.78x | 2.60x | 2.95x | 0.98x | 1.58x |
 
-¹ v5 rows are from a later, noisier run (its native control read 0.77–1.86x);
+| v6-oneshot tracked ¹ | 10.1x | 9.13x | 4.35x | 1.20x | 2.94x |
+| v6-oneshot untracked ¹ | 2.52x | 2.26x | 2.71x | 0.93x | 1.52x |
+
+¹ v5/v6 rows are from later, noisier runs (native controls read 0.77–1.86x);
 same-run v4 measured 7.94x/7.27x tracked and 2.06x/1.86x untracked on
-awaitLoop/thenChain. Net: tracked cost is v4-level; **untracked bare hops pay
-~+35%** — the constructor-trap getter fires on every await/species lookup
-isolate-wide, which is exactly the residue v4 was designed to avoid. awaitWork
-(~2.5µs of real work per hop) stays at ~1x in both.
+awaitLoop/thenChain. Net: v5 tracked cost is v4-level; **untracked bare hops
+pay ~+35%** — the constructor-trap getter fires on every await/species lookup
+isolate-wide, which is exactly the residue v4 was designed to avoid. v6 adds
+~15–30% on *tracked* hops over v5 (own `then` is an accessor, one getter call
+per hop) and leaves untracked hops at v5 level. awaitWork (~2.5µs of real work
+per hop) stays at ~1x throughout.
 
 The await-based scenarios (awaitLoop, awaitWork, rpcTimer) are identical
 between v4 and v4-sand: `await` always calls `then` with a (resolve, reject)
@@ -182,16 +218,19 @@ v4 (`00-original.js`):
 - Tracked promises answer `p.constructor === Promise` with their context
   object, which can confuse code that inspects `constructor`.
 
-v5 (`05-constructor-trap.js`):
+v5 (`05-constructor-trap.js`) and v6 (`06-one-shot-then.js`):
 
 - `p.constructor === Promise` is `false` when evaluated *inside* an active
   scope (the accessor answers with the context object; outside scopes it
   answers `%Promise%` — better than v4's stamped-forever answer). Reading
-  `constructor` inside a scope also marks the promise's next two-handler
-  `then` as await-like (single pending slot, see the source header).
+  `constructor` inside a scope also parks that scope on the promise, making
+  its next `then` read behave await-like (awaiter-side) — indistinguishable
+  from a real await's lookup sequence, see the source headers.
 - Two different scopes awaiting the *same* promise in the same synchronous
-  burst share the single pending-context slot — the later capture wins for
-  both resumptions.
+  burst share v5's single pending-context slot — the later capture wins for
+  both resumptions. **Solved by v6** (the parked context is consumed
+  synchronously within each await's own suspension sequence and bound into a
+  one-shot closure per awaiter).
 - `uninstall()` restores `Promise.prototype.constructor` but cannot restore
   V8's protectors — bare hops keep the observable-lookup cost until reload
   (v4 has the same protector residue once anything was stamped).

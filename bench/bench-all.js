@@ -18,6 +18,7 @@ const MODES = [
   { mode: 'v4', lib: IMPL('00-original.js') },
   { mode: 'v4-sand', lib: IMPL('04-v4-sandwich-always.js') }, // sandwich on every wrapped hop
   { mode: 'v5-trap', lib: IMPL('05-constructor-trap.js') },   // constructor trap: awaiter-side bare-await capture
+  { mode: 'v6-oneshot', lib: IMPL('06-one-shot-then.js') },   // one-shot then: per-awaiter context on shared promises
 ];
 
 const results = [];
