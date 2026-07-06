@@ -59,6 +59,33 @@ const PARTS = {
         const leaked = getCurrent();
         return leaked === undefined ? null : leaked;
     },
+
+    // PART E: ONE shared promise — a "ready" signal, or a deduped in-flight
+    // request — awaited by TWO different scopes at once. A shared promise has a
+    // SINGLE identity, so which scope does each continuation resume in?
+    //   - Resolver-side designs (naive, stamps v1-v4) can only bracket the
+    //     resumptions with the promise's ONE creation context (here: none — it
+    //     was made outside any scope), so both awaiters see the same wrong scope.
+    //   - Awaiter-side v5 records context per-await, but into a SINGLE pending
+    //     slot on the promise: the second `await` overwrites the first, so the
+    //     resume that fires first wins the (now shared) slot and the other falls
+    //     back to the creation context. v5 documents this as a known limitation.
+    // So NO impl currently returns the correct { A: 'A', B: 'B' } — this probe
+    // exists to show exactly what each one *does* return (e.g. A saw B, B saw
+    // undefined). Fixing it needs a per-promise queue of awaiter contexts.
+    async E({ effect, getCurrent, rpc }) {
+        const shared = rpc(); // created OUTSIDE any scope; awaited by both below
+        const seen = {};
+        async function consumer(name) {
+            await shared;              // A and B await the SAME promise
+            seen[name] = getCurrent(); // which scope does each continuation see?
+        }
+        await Promise.all([
+            effect('A', () => consumer('A')),
+            effect('B', () => consumer('B')),
+        ]);
+        return seen; // ideal: { A: 'A', B: 'B' } — no impl achieves this yet
+    },
 };
 
 // Run every part against `env` and flatten C into { Cbare, Crestamp }.
@@ -72,7 +99,8 @@ async function runProbes(env) {
     const B = await PARTS.B(e);
     const C = await PARTS.C(e);
     const D = await PARTS.D(e);
-    return { A, B, Cbare: C.Cbare, Crestamp: C.Crestamp, D };
+    const E = await PARTS.E(e);
+    return { A, B, Cbare: C.Cbare, Crestamp: C.Crestamp, D, E };
 }
 
 // Dual-target export: Node (test/test.js) via require, browser (index.js and

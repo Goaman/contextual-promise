@@ -23,7 +23,7 @@ const IMPLS = [
 // ---------------------------------------------------------------------------
 const CODE = {
     A: Probes.PARTS.A, B: Probes.PARTS.B,
-    Cbare: Probes.PARTS.C, Crestamp: Probes.PARTS.C, D: Probes.PARTS.D,
+    Cbare: Probes.PARTS.C, Crestamp: Probes.PARTS.C, D: Probes.PARTS.D, E: Probes.PARTS.E,
     awaitLoop: Scenarios.SCENARIOS.awaitLoop, thenChain: Scenarios.SCENARIOS.thenChain,
     fanout: Scenarios.SCENARIOS.fanout, awaitWork: Scenarios.SCENARIOS.awaitWork,
     rpcTimer: Scenarios.SCENARIOS.rpcTimer,
@@ -97,6 +97,13 @@ const verdict = (s) =>
 const cverdict = (v) => (v === 'CTX' ? 'OK  (saw CTX)' : `LOST  (saw ${JSON.stringify(v)})`);
 
 const dverdict = (v) => (v == null ? 'OK  (stayed clean)' : `LEAK  (awaiter saw ${JSON.stringify(v)})`);
+
+// PART E: one shared promise awaited by scopes A and B. Ideal is A→A, B→B; no
+// impl reaches it yet, so surface exactly what each returned.
+const everdict = (s) =>
+    s.A === 'A' && s.B === 'B'
+        ? 'OK  (A→A, B→B)'
+        : `SHARED  (A saw ${JSON.stringify(s.A)}, B saw ${JSON.stringify(s.B)})`;
 
 // The runner runs *inside* each impl's iframe. probes.js (loaded alongside the
 // impl) defines window.runProbes; we just hand it the uniform interface every
@@ -182,6 +189,7 @@ function renderPanel(impl, data) {
         line('PART C  await blip() (bare):      ' + cverdict(data.out.Cbare), 'Cbare');
         line('PART C  await Promise.resolve(…): ' + cverdict(data.out.Crestamp), 'Crestamp');
         line('PART D  await scoped from outside ' + dverdict(data.out.D), 'D');
+        line('PART E  shared promise, two scopes ' + everdict(data.out.E), 'E');
     }
     document.getElementById('panels').appendChild(panel);
 }

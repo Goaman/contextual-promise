@@ -40,6 +40,13 @@ const { runProbes } = require(path.join(__dirname, '..', 'probes.js'));
     console.log('PART D await scoped outside    skipped (impl declares the limitation)');
   }
 
+  // PART E: one shared promise awaited by two scopes at once. Ideal is
+  // { A: 'A', B: 'B' }, but a shared promise has a single identity and no impl
+  // resolves per-awaiter context here yet (v5 documents the limitation), so
+  // this is reported for diagnosis, not asserted.
+  console.log('PART E shared promise         ', `{ A: ${out.E.A}, B: ${out.E.B} }`,
+    (out.E.A === 'A' && out.E.B === 'B') ? '(OK)' : '(known limitation — no per-awaiter context on a shared promise)');
+
   // Invariant: once everything has settled, no scope is left on the stack.
   await new Promise((r) => setTimeout(r, 20));
   console.log('leak check                    ', JSON.stringify(getCurrent()));
