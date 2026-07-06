@@ -1,0 +1,5 @@
+[     142ms] [LOG] [naive] PART A  .then(callback):  OK @ http://localhost:8734/demo.js:7
+[     143ms] [LOG] [naive] PART B  async/await:      WRONG  (S1 saw "S2", S2 saw "S1") @ http://localhost:8734/demo.js:7
+[     144ms] [LOG] [contextual] PART A  .then(callback):  OK @ http://localhost:8734/demo.js:7
+[     144ms] [LOG] [contextual] PART B  async/await:      OK @ http://localhost:8734/demo.js:7
+[     176ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8734/favicon.ico:0

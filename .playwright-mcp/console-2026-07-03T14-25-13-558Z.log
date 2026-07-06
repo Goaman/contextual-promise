@@ -1,0 +1,4 @@
+[     111ms] [LOG] [naive] PART A  .then(callback):  OK @ http://localhost:8734/demo.js:7
+[     111ms] [LOG] [naive] PART B  async/await:      OK @ http://localhost:8734/demo.js:7
+[     112ms] [LOG] [contextual] PART A  .then(callback):  OK @ http://localhost:8734/demo.js:7
+[     112ms] [LOG] [contextual] PART B  async/await:      OK @ http://localhost:8734/demo.js:7

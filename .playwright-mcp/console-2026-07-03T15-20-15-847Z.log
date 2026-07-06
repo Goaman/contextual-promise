@@ -1,0 +1,4 @@
+[     245ms] TypeError: Failed to execute 'observe' on 'MutationObserver': parameter 1 is not of type 'Node'.
+    at <anonymous>:10:13
+    at <anonymous>:11:9
+    at <anonymous>:12:7

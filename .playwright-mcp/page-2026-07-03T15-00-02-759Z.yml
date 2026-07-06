@@ -1,0 +1,13 @@
+- generic [active] [ref=e1]:
+  - heading "Promise Scope — naive rpc() vs cancellablePromise" [level=1] [ref=e2]
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: Naive rpc() (colleague strategy)
+      - generic [ref=e6]:
+        - generic [ref=e7]: "PART A .then(callback): OK"
+        - generic [ref=e8]: "PART B async/await: OK"
+    - generic [ref=e9]:
+      - generic [ref=e10]: cancellablePromise (repo implementation)
+      - generic [ref=e11]:
+        - generic [ref=e12]: "PART A .then(callback): OK"
+        - generic [ref=e13]: "PART B async/await: OK"

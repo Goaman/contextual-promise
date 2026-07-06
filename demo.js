@@ -25,10 +25,18 @@ async function demoNaive(log) {
         return {
             then(onF, onR) {
                 return real.then((v) => {
+                    // Calling onF may only *enqueue* the real continuation
+                    // (an async function resumes in a later microtask), so
+                    // bracket the jobs it enqueues with a queued push/pop
+                    // pair — FIFO order puts them right around those jobs.
                     stack.push(captured);
-                    const r = onF ? onF(v) : v;
-                    Promise.resolve().then(() => stack.pop());
-                    return r;
+                    queueMicrotask(() => stack.push(captured));
+                    try {
+                        return onF ? onF(v) : v;
+                    } finally {
+                        queueMicrotask(() => stack.pop());
+                        stack.pop();
+                    }
                 }, onR);
             },
         };

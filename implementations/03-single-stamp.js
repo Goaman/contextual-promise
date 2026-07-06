@@ -18,15 +18,10 @@ class ExecContext {
 // the context — no second property. Because ExecContext has no
 // Symbol.species, SpeciesConstructor(p) falls back to %Promise% and derived
 // promises are still created through the fast native capability path.
-// The patched then rides along as an own property too, so the global
-// Promise.prototype is NEVER touched: untracked promises keep a fully
-// native then with zero indirection, and `await` on them never sees us.
+// Untracked promises carry no own property at all and keep their fast paths.
 const stampIfTracked = (p) => {
     const ctx = execContexts[execContexts.length - 1];
-    if (ctx !== undefined) {
-        p.constructor = ctx;
-        p.then = patchedThen;
-    }
+    if (ctx !== undefined) p.constructor = ctx;
     return p;
 };
 
@@ -81,7 +76,6 @@ const patchedThen = function (onFulfilled, onRejected) {
         wrapR ? (e) => _exec(ctx, onRejected, e, sandwich) : onRejected
     );
     derived.constructor = ctx;
-    derived.then = patchedThen;
     return derived;
 };
 
@@ -142,10 +136,12 @@ PatchedPromise.all = function (items) {
 
 window.install = () => {
     window.Promise = PatchedPromise;
+    NativePromise.prototype.then = patchedThen;
 };
 
 window.uninstall = () => {
     window.Promise = NativePromise;
+    NativePromise.prototype.then = nativeThen;
 };
 
 window.effect = (scopeName, fn) => {

@@ -74,7 +74,7 @@ const patchedThen = function (onFulfilled, onRejected) {
     // (PromiseResolveThenableJob) always passes a (resolve, reject) pair;
     // user chains overwhelmingly pass one handler per link, so they skip the
     // two extra microtasks.
-    const sandwich = wrapF && wrapR;
+    const sandwich = wrapF || wrapR; // VARIANT: sandwich on every wrapped hop (worst case)
     const derived = nativeThen.call(
         this,
         wrapF ? (v) => _exec(ctx, onFulfilled, v, sandwich) : onFulfilled,
