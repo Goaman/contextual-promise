@@ -1,0 +1,32 @@
+- generic [active] [ref=f60e1]:
+  - heading "Promise Scope — every implementation, side by side" [level=1] [ref=f60e2]
+  - paragraph [ref=f60e3]:
+    - text: "A & B: two interleaved scopes S1 & S2 across a"
+    - code [ref=f60e4]: .then()
+    - text: chain and native
+    - code [ref=f60e5]: async/await
+    - text: "— OK = each continuation saw its own scope. C: does context survive one layer of async composition ("
+    - code [ref=f60e6]: something()
+    - text: awaits async
+    - code [ref=f60e7]: blip()
+    - text: )? A bare
+    - code [ref=f60e8]: await blip()
+    - text: awaits a native promise, invisible to stamp-based impls — but the await's
+    - code [ref=f60e9]: constructor
+    - text: lookup is observable, and v5's prototype-accessor trap captures the awaiter's context right at the suspension point. Re-stamping via
+    - code [ref=f60e10]: Promise.resolve(blip())
+    - text: "is recovered by all patched impls; naive recovers nothing. D: the flip side — awaiting a"
+    - emphasis [ref=f60e11]: scoped
+    - text: promise from
+    - emphasis [ref=f60e12]: outside
+    - text: any scope. Resolver-side designs (naive, v1–v4) leak the promise's scope into the outside awaiter's continuation; v5's awaiter-side capture resumes it natively (clean).
+  - heading "Benchmarks" [level=2] [ref=f60e13]
+  - paragraph [ref=f60e14]:
+    - text: Same scenarios as
+    - code [ref=f60e15]: bench/bench-one.js
+    - text: ", run in-browser. Each implementation runs in its own iframe; a pristine native baseline (protectors intact) is measured in a lib-free iframe, and each cell shows the implementation's median ms and its ratio vs that baseline."
+    - code [ref=f60e16]: naive
+    - text: is excluded — it has no
+    - code [ref=f60e17]: Promise
+    - text: "drop-in. Heads-up: this hammers the main thread for a few seconds."
+  - button "Run benchmarks" [ref=f60e19] [cursor=pointer]

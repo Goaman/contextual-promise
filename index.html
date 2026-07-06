@@ -54,6 +54,11 @@
   <div id="bench-results"></div>
 
   <div id="code-tip"></div>
+  <!-- Single sources of truth, loaded before index.js: the probe suite (also
+       used by test/test.js) and the benchmark scenarios (also used by
+       bench/bench-one.js). index.js reads their function bodies for tooltips. -->
+  <script src="probes.js"></script>
+  <script src="scenarios.js"></script>
   <script src="index.js"></script>
 </body>
 </html>

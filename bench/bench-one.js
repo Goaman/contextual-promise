@@ -3,6 +3,8 @@
 // implementation, in the same process. One process per mode so protector
 // invalidation / global patches can't leak between modes.
 const { performance } = require('perf_hooks');
+const path = require('path');
+const { mkScenarios } = require(path.join(__dirname, '..', 'scenarios.js'));
 
 const MODE = process.argv[2];
 const LIB = process.argv[3];
@@ -13,38 +15,9 @@ const RUNS = 7;
 // ~1-2us of real CPU work per hop, identical code in every mode
 const work = (iters) => { let x = 0; for (let j = 0; j < iters; j++) x += j * j; return x; };
 
-const mkScenarios = (P, effectFn) => ({
-  awaitLoop: () => effectFn('bench', async () => {
-    let s = 0;
-    for (let i = 0; i < N; i++) s += await P.resolve(1);
-    if (s !== N) throw new Error('bad result');
-  }),
-  thenChain: () => effectFn('bench', () => {
-    let p = P.resolve(0);
-    for (let i = 0; i < N; i++) p = p.then((v) => v + 1);
-    return p.then((v) => { if (v !== N) throw new Error('bad result'); });
-  }),
-  fanout: () => effectFn('bench', () => {
-    const a = new Array(N);
-    for (let i = 0; i < N; i++) a[i] = P.resolve(i).then((v) => v + 1);
-    return P.all(a).then((r) => { if (r[N - 1] !== N) throw new Error('bad result'); });
-  }),
-  awaitWork: () => effectFn('bench', async () => {
-    let s = 0;
-    for (let i = 0; i < N_RPC; i++) { s += await P.resolve(1); s += work(2000) % 2; }
-    if (s < N_RPC) throw new Error('bad result');
-  }),
-  rpcTimer: () => effectFn('bench', () => {
-    const a = new Array(N_RPC);
-    const one = async () => { await new P((r) => setTimeout(r, 0)); return 1; };
-    for (let i = 0; i < N_RPC; i++) a[i] = one();
-    return P.all(a).then((r) => { if (r.length !== N_RPC) throw new Error('bad result'); });
-  }),
-});
-
 async function measureAll(P, effectFn) {
   const out = {};
-  const scenarios = mkScenarios(P, effectFn);
+  const scenarios = mkScenarios(P, effectFn, N, N_RPC, work);
   for (const [key, fn] of Object.entries(scenarios)) {
     await fn(); // warmup
     const times = [];

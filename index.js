@@ -15,113 +15,27 @@ const IMPLS = [
 
 // ---------------------------------------------------------------------------
 // Hover-for-source: the exact code behind each demo part / benchmark scenario,
-// shown in a syntax-highlighted tooltip. These snippets are written as real
-// functions (so the editor lints & highlights them) and their *bodies* are
-// pulled out with Function.prototype.toString at hover time — never executed,
-// so the free identifiers (effect, rpc, P, N, …) don't need to be in scope.
-// The demo-part snippets mirror runnerSource(); the scenario snippets mirror
-// mkScenarios() in bench/bench-one.js.
+// shown in a syntax-highlighted tooltip. There is NO copy of the code here — we
+// pull the *body* straight out of the single-source functions (probes.js's
+// PARTS and scenarios.js's SCENARIOS, both loaded before this script) with
+// Function.prototype.toString, so a tooltip can never show something different
+// from what actually runs. The two demo C-lines both point at PARTS.C.
 // ---------------------------------------------------------------------------
-
-/* eslint-disable no-undef, no-unused-vars */
-async function part_A() {
-    // each scope's .then() continuation must see its own scope
-    const a = effect('S1', () => rpc().then(() => (seen.S1 = getCurrent())));
-    const b = effect('S2', () => rpc().then(() => (seen.S2 = getCurrent())));
-    await Promise.all([a, b]); // expect: S1 saw "S1", S2 saw "S2"
-}
-async function part_B() {
-    // each native async/await continuation must see its own scope
-    const a = effect('S1', () => (async () => {
-        await rpc();
-        seen.S1 = getCurrent();
-    })());
-    const b = effect('S2', () => (async () => {
-        await rpc();
-        seen.S2 = getCurrent();
-    })());
-    await Promise.all([a, b]); // expect: S1 saw "S1", S2 saw "S2"
-}
-async function part_Cbare() {
-    // does context survive ONE layer of async composition? (bare await)
-    // blip()'s promise is a native %Promise%, invisible to stamp-based impls.
-    async function blip() { await rpc(); return getCurrent(); }
-    async function nestBare() { await blip(); return getCurrent(); }
-
-    out.Cbare = await effect('CTX', () => nestBare()); // expect: "CTX"
-}
-async function part_Crestamp() {
-    // same, but re-stamp the intermediate through a tracked constructor
-    async function blip() { await rpc(); return getCurrent(); }
-    async function nestRestamp() {
-        await Promise.resolve(blip()); // Promise.resolve() is patched -> stamped
-        return getCurrent();
-    }
-    out.Crestamp = await effect('CTX', () => nestRestamp()); // expect: "CTX"
-}
-async function part_D() {
-    // await a SCOPED promise from OUTSIDE any scope; must stay clean
-    await effect('S1', () => rpc());
-    const leaked = getCurrent(); // expect: undefined (no leak)
-}
-
-function scen_awaitLoop() {
-    effect('bench', async () => {
-        let s = 0;
-        for (let i = 0; i < N; i++)
-            s += await P.resolve(1); // N bare awaits in one scope
-    });
-}
-function scen_thenChain() {
-    effect('bench', () => {
-        let p = P.resolve(0);
-        for (let i = 0; i < N; i++)
-            p = p.then((v) => v + 1); // N-deep .then() chain
-        return p;
-    });
-}
-function scen_fanout() {
-    effect('bench', () => {
-        const a = new Array(N);
-        for (let i = 0; i < N; i++)
-            a[i] = P.resolve(i).then((v) => v + 1); // N independent promises
-        return P.all(a);
-    });
-}
-function scen_awaitWork() {
-    effect('bench', async () => {
-        let s = 0;
-        for (let i = 0; i < N_RPC; i++) {
-            s += await P.resolve(1);
-            s += work(2000) % 2; // ~1-2us of real CPU per hop
-        }
-    });
-}
-function scen_rpcTimer() {
-    effect('bench', () => {
-        const one = async () => {
-            await new P((r) => setTimeout(r, 0)); // real macrotask boundary
-            return 1;
-        };
-        const a = new Array(N_RPC);
-        for (let i = 0; i < N_RPC; i++) a[i] = one();
-        return P.all(a);
-    });
-}
-/* eslint-enable no-undef, no-unused-vars */
-
-// data-code key -> the function whose body is the snippet to display.
 const CODE = {
-    A: part_A, B: part_B, Cbare: part_Cbare, Crestamp: part_Crestamp, D: part_D,
-    awaitLoop: scen_awaitLoop, thenChain: scen_thenChain, fanout: scen_fanout,
-    awaitWork: scen_awaitWork, rpcTimer: scen_rpcTimer,
+    A: Probes.PARTS.A, B: Probes.PARTS.B,
+    Cbare: Probes.PARTS.C, Crestamp: Probes.PARTS.C, D: Probes.PARTS.D,
+    awaitLoop: Scenarios.SCENARIOS.awaitLoop, thenChain: Scenarios.SCENARIOS.thenChain,
+    fanout: Scenarios.SCENARIOS.fanout, awaitWork: Scenarios.SCENARIOS.awaitWork,
+    rpcTimer: Scenarios.SCENARIOS.rpcTimer,
 };
 
-// The snippet is the function's body: everything between the first `{` and the
-// last `}`, with the common leading indentation stripped.
+// The snippet is the function's body: everything between the `{` that opens the
+// body (the first `{` after the parameter list) and the last `}`, with the
+// common leading indentation stripped.
 function snippetOf(fn) {
     const src = fn.toString();
-    const inner = src.slice(src.indexOf('{') + 1, src.lastIndexOf('}'));
+    const open = src.indexOf('{', src.indexOf(')'));
+    const inner = src.slice(open + 1, src.lastIndexOf('}'));
     const lines = inner.replace(/^\n+|\s+$/g, '').split('\n');
     const indent = Math.min(
         ...lines.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length)
@@ -184,61 +98,21 @@ const cverdict = (v) => (v === 'CTX' ? 'OK  (saw CTX)' : `LOST  (saw ${JSON.stri
 
 const dverdict = (v) => (v == null ? 'OK  (stayed clean)' : `LEAK  (awaiter saw ${JSON.stringify(v)})`);
 
-// The probe runs *inside* each impl's iframe. It uses the uniform interface
-// every implementation exposes on window: install / uninstall / effect /
-// getCurrent, plus an optional rpc() (the naive strategy needs its bespoke
-// thenable; the patched-Promise impls just use Promise.resolve()).
+// The runner runs *inside* each impl's iframe. probes.js (loaded alongside the
+// impl) defines window.runProbes; we just hand it the uniform interface every
+// implementation exposes on window (install / uninstall / effect / getCurrent,
+// plus an optional rpc() the naive strategy needs) and post the result back.
+// Sharing probes.js keeps this in lockstep with test/test.js.
 function runnerSource() {
     return `
     (async () => {
       try {
-        const rpc = window.rpc || (() => Promise.resolve());
         install();
-        const out = {};
-        {
-          const seen = {};
-          const a = effect('S1', () => rpc().then(() => (seen.S1 = getCurrent())));
-          const b = effect('S2', () => rpc().then(() => (seen.S2 = getCurrent())));
-          await Promise.all([a, b]);
-          out.A = seen;
-        }
-        {
-          const seen = {};
-          const a = effect('S1', () => (async () => { await rpc(); seen.S1 = getCurrent(); })());
-          const b = effect('S2', () => (async () => { await rpc(); seen.S2 = getCurrent(); })());
-          await Promise.all([a, b]);
-          out.B = seen;
-        }
-        // PART C: does context survive ONE layer of async composition? blip() is
-        // an async fn; something() awaits its result. blip()'s promise is a
-        // NATIVE %Promise% (async fns always use the intrinsic), so its stamp-
-        // based interception never triggers... but the await's Get(value,
-        // "constructor") IS observable, and 05-constructor-trap intercepts it
-        // with a prototype accessor that captures the awaiter's context at the
-        // suspension point — bare composition works there. For the stamp-only
-        // impls, re-stamping the intermediate through a tracked constructor
-        // (\`Promise.resolve(blip())\`) hands them a promise they own, so they
-        // restore context around the resume; naive can't (it only tracks its
-        // bespoke thenable).
-        {
-          async function blip() { await rpc(); return getCurrent(); }
-          async function nestBare() { await blip(); return getCurrent(); }
-          async function nestRestamp() { await Promise.resolve(blip()); return getCurrent(); }
-          out.Cbare = await effect('CTX', () => nestBare());
-          out.Crestamp = await effect('CTX', () => nestRestamp());
-        }
-        // PART D: the flip side of C — awaiting a SCOPED promise from OUTSIDE
-        // any scope. Resolver-side designs (the naive thenable and the stamp
-        // impls v1-v4) restore the promise's CREATION scope around whoever
-        // awaits it, so the scope leaks into an awaiter that never entered it
-        // (transiently: the next bare native await cuts the chain — which is
-        // the only reason v4's leak-check test ever passed). Awaiter-side
-        // capture (v5) resumes out-of-scope awaiters natively: clean.
-        {
-          await effect('S1', () => rpc());
-          const leaked = getCurrent();
-          out.D = leaked === undefined ? null : leaked;
-        }
+        const out = await runProbes({
+          effect: window.effect,
+          getCurrent: window.getCurrent,
+          rpc: window.rpc,
+        });
         uninstall();
         parent.postMessage({ __probe: RUN_ID, out }, '*');
       } catch (err) {
@@ -265,6 +139,7 @@ function runImpl(impl, runId) {
         iframe.srcdoc = `<!DOCTYPE html><html><head>
       <script>window.RUN_ID = ${JSON.stringify(runId)};<\/script>
       <script src="${impl.path}"><\/script>
+      <script src="probes.js"><\/script>
       <script>${runnerSource()}<\/script>
     </head><body></body></html>`;
         document.body.appendChild(iframe);
@@ -326,7 +201,7 @@ function renderPanel(impl, data) {
 // naive impl is skipped: its rpc() thenable is not a drop-in Promise.
 // ---------------------------------------------------------------------------
 
-const SCEN = ['awaitLoop', 'thenChain', 'fanout', 'awaitWork', 'rpcTimer'];
+const SCEN = Scenarios.SCEN; // single source: scenarios.js
 
 // Browser-scaled work sizes (bench-one uses 100k / 5k; that would freeze a tab
 // for far too long). Everything else mirrors bench-one.js exactly.
@@ -336,38 +211,14 @@ const BENCH_CFG = { N: 20000, N_RPC: 800, RUNS: 5 };
 // median-of-RUNS measurement loop, parameterised by (P, effectFn) just like
 // bench-one's mkScenarios / measureAll.
 function benchPrelude() {
+    // The scenarios themselves come from scenarios.js (loaded as a <script> in
+    // the iframe); only the sizes + timing loop live here.
     return `
     const { N, N_RPC, RUNS } = ${JSON.stringify(BENCH_CFG)};
     const work = (iters) => { let x = 0; for (let j = 0; j < iters; j++) x += j * j; return x; };
-    const mkScenarios = (P, effectFn) => ({
-      awaitLoop: () => effectFn('bench', async () => {
-        let s = 0; for (let i = 0; i < N; i++) s += await P.resolve(1);
-        if (s !== N) throw new Error('bad result');
-      }),
-      thenChain: () => effectFn('bench', () => {
-        let p = P.resolve(0); for (let i = 0; i < N; i++) p = p.then((v) => v + 1);
-        return p.then((v) => { if (v !== N) throw new Error('bad result'); });
-      }),
-      fanout: () => effectFn('bench', () => {
-        const a = new Array(N);
-        for (let i = 0; i < N; i++) a[i] = P.resolve(i).then((v) => v + 1);
-        return P.all(a).then((r) => { if (r[N - 1] !== N) throw new Error('bad result'); });
-      }),
-      awaitWork: () => effectFn('bench', async () => {
-        let s = 0;
-        for (let i = 0; i < N_RPC; i++) { s += await P.resolve(1); s += work(2000) % 2; }
-        if (s < N_RPC) throw new Error('bad result');
-      }),
-      rpcTimer: () => effectFn('bench', () => {
-        const a = new Array(N_RPC);
-        const one = async () => { await new P((r) => setTimeout(r, 0)); return 1; };
-        for (let i = 0; i < N_RPC; i++) a[i] = one();
-        return P.all(a).then((r) => { if (r.length !== N_RPC) throw new Error('bad result'); });
-      }),
-    });
     async function measureAll(P, effectFn) {
       const out = {};
-      const scenarios = mkScenarios(P, effectFn);
+      const scenarios = Scenarios.mkScenarios(P, effectFn, N, N_RPC, work);
       for (const [key, fn] of Object.entries(scenarios)) {
         await fn(); // warmup
         const times = [];
@@ -440,6 +291,7 @@ function runBench(implPath, innerSrc, runId) {
         iframe.srcdoc = `<!DOCTYPE html><html><head>
       <script>window.RUN_ID = ${JSON.stringify(runId)};<\/script>
       ${implScript}
+      <script src="scenarios.js"><\/script>
       <script>${innerSrc}<\/script>
     </head><body></body></html>`;
         document.body.appendChild(iframe);

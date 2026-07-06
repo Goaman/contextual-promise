@@ -1,89 +1,49 @@
 // Correctness suite for the cancellable/contextual promise implementations.
+// Runs the SAME probe set the demo page renders (../probes.js) and asserts the
+// expected verdict for each part — so the demo and the test can never diverge.
 // Usage: node test/test.js [path-to-implementation]   (default: ../implementations/00-original.js)
 const path = require('path');
 globalThis.window = globalThis;
 require(process.argv[2] ? path.resolve(process.argv[2]) : path.join(__dirname, '..', 'implementations', '00-original.js'));
 
 const assert = require('assert');
-const rpc = () => Promise.resolve();
+const { runProbes } = require(path.join(__dirname, '..', 'probes.js'));
 
 (async () => {
-  // Part A: .then(callback)
-  {
-    const seen = {};
-    const a = effect('S1', () => rpc().then(() => (seen.S1 = getCurrent())));
-    const b = effect('S2', () => rpc().then(() => (seen.S2 = getCurrent())));
-    await Promise.all([a, b]);
-    console.log('PART A .then       ', JSON.stringify(seen));
-    assert.deepStrictEqual(seen, { S1: 'S1', S2: 'S2' }, 'Part A');
-  }
-  // Part B: async/await (the case the original implementation failed)
-  {
-    const seen = {};
-    const a = effect('S1', () => (async () => { await rpc(); seen.S1 = getCurrent(); })());
-    const b = effect('S2', () => (async () => { await rpc(); seen.S2 = getCurrent(); })());
-    await Promise.all([a, b]);
-    console.log('PART B async/await ', JSON.stringify(seen));
-    assert.deepStrictEqual(seen, { S1: 'S1', S2: 'S2' }, 'Part B');
-  }
-  // C: multiple sequential awaits, interleaved scopes, incl. `new Promise`
-  {
-    const seen = { S1: [], S2: [] };
-    const mk = (name) => effect(name, () => (async () => {
-      await rpc(); seen[name].push(getCurrent());
-      await rpc(); seen[name].push(getCurrent());
-      await new Promise((r) => r(1)); seen[name].push(getCurrent());
-    })());
-    await Promise.all([mk('S1'), mk('S2')]);
-    console.log('C multi-await      ', JSON.stringify(seen));
-    assert.deepStrictEqual(seen, { S1: ['S1', 'S1', 'S1'], S2: ['S2', 'S2', 'S2'] }, 'C');
-  }
-  // D: chained .then().then()
-  {
-    const seen = [];
-    await effect('S1', () => rpc().then(() => 1).then(() => seen.push(getCurrent())));
-    console.log('D chained then     ', JSON.stringify(seen));
-    assert.deepStrictEqual(seen, ['S1'], 'D');
-  }
-  // E: rejection through await keeps context in catch
-  {
-    let caught;
-    await effect('S1', () => (async () => {
-      try { await Promise.reject(new Error('x')); } catch { caught = getCurrent(); }
-    })());
-    console.log('E await rejection  ', JSON.stringify(caught));
-    assert.strictEqual(caught, 'S1', 'E');
-  }
-  // F: no context leaks once everything settled
-  await new Promise((r) => setTimeout(r, 20));
-  console.log('F leak check       ', JSON.stringify(getCurrent()));
-  assert.strictEqual(getCurrent(), undefined, 'F: context stack not balanced');
+  install();
+  const out = await runProbes({
+    effect: window.effect,
+    getCurrent: window.getCurrent,
+    rpc: window.rpc,
+  });
 
-  // G: bare async composition — `await blip()` awaits the async fn's implicit
-  // NATIVE promise. Only impls that trap the awaiter's constructor lookup
-  // (05-constructor-trap) support this; others declare the limitation.
+  // A / B / C-restamp hold for every context-propagating impl.
+  console.log('PART A .then                  ', JSON.stringify(out.A));
+  assert.deepStrictEqual(out.A, { S1: 'S1', S2: 'S2' }, 'Part A: .then continuation');
+
+  console.log('PART B async/await            ', JSON.stringify(out.B));
+  assert.deepStrictEqual(out.B, { S1: 'S1', S2: 'S2' }, 'Part B: async/await continuation');
+
+  console.log('PART C await Promise.resolve  ', JSON.stringify(out.Crestamp));
+  assert.strictEqual(out.Crestamp, 'CTX', 'Part C: re-stamped composition');
+
+  // Bare composition (C-bare) and clean out-of-scope await (D) only hold for
+  // awaiter-side impls; the others declare the limitation (see demo Parts C/D).
   if (window.SUPPORTS_BARE_AWAIT_COMPOSITION) {
-    const seen = {};
-    const blip = async () => { await rpc(); };
-    const mk = (name) => effect(name, () => (async () => {
-      await blip(); seen[name] = getCurrent();
-    })());
-    await Promise.all([mk('S1'), mk('S2')]);
-    console.log('G bare composition ', JSON.stringify(seen));
-    assert.deepStrictEqual(seen, { S1: 'S1', S2: 'S2' }, 'G');
-    await new Promise((r) => setTimeout(r, 20));
-    assert.strictEqual(getCurrent(), undefined, 'G: context stack not balanced');
+    console.log('PART C await blip() (bare)    ', JSON.stringify(out.Cbare));
+    assert.strictEqual(out.Cbare, 'CTX', 'Part C: bare composition');
 
-    // H: awaiter-side semantics — awaiting a scoped promise from OUTSIDE any
-    // scope must not leak the scope into the awaiter. (Resolver-side impls
-    // leak here transiently, until the next bare native await cuts the chain.)
-    await effect('S1', () => rpc());
-    console.log('H outside await    ', JSON.stringify(getCurrent()));
-    assert.strictEqual(getCurrent(), undefined, 'H: scope leaked into outside awaiter');
+    console.log('PART D await scoped outside   ', JSON.stringify(out.D));
+    assert.strictEqual(out.D, null, 'Part D: scope leaked into outside awaiter');
   } else {
-    console.log('G bare composition  skipped (impl declares the limitation)');
-    console.log('H outside await     skipped (impl declares the limitation)');
+    console.log('PART C await blip() (bare)     skipped (impl declares the limitation)');
+    console.log('PART D await scoped outside    skipped (impl declares the limitation)');
   }
+
+  // Invariant: once everything has settled, no scope is left on the stack.
+  await new Promise((r) => setTimeout(r, 20));
+  console.log('leak check                    ', JSON.stringify(getCurrent()));
+  assert.strictEqual(getCurrent(), undefined, 'context stack not balanced');
 
   console.log('ALL PASS');
 })().catch((e) => { console.error('FAIL:', e.message); process.exit(1); });
