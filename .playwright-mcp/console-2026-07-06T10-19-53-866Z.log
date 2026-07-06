@@ -1,0 +1,49 @@
+[     342ms] [LOG] [implementations/00-naive.js] PART A  .then(callback):          OK @ http://localhost:8877/index.js:185
+[     343ms] [LOG] [implementations/00-naive.js] PART B  async/await:              OK @ http://localhost:8877/index.js:185
+[     343ms] [LOG] [implementations/00-naive.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8877/index.js:185
+[     343ms] [LOG] [implementations/00-naive.js] PART C  await Promise.resolve(…): LOST  (saw undefined) @ http://localhost:8877/index.js:185
+[     343ms] [LOG] [implementations/00-naive.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8877/index.js:185
+[     343ms] [LOG] [implementations/00-naive.js] PART E  shared promise, two scopes SHARED  (A saw undefined, B saw undefined) @ http://localhost:8877/index.js:185
+[     373ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8877/favicon.ico:0
+[     376ms] [LOG] [implementations/00-original.js] PART A  .then(callback):          OK @ http://localhost:8877/index.js:185
+[     376ms] [LOG] [implementations/00-original.js] PART B  async/await:              OK @ http://localhost:8877/index.js:185
+[     376ms] [LOG] [implementations/00-original.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8877/index.js:185
+[     377ms] [LOG] [implementations/00-original.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8877/index.js:185
+[     377ms] [LOG] [implementations/00-original.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8877/index.js:185
+[     377ms] [LOG] [implementations/00-original.js] PART E  shared promise, two scopes SHARED  (A saw undefined, B saw undefined) @ http://localhost:8877/index.js:185
+[     428ms] [LOG] [implementations/01-proxy.js] PART A  .then(callback):          OK @ http://localhost:8877/index.js:185
+[     428ms] [LOG] [implementations/01-proxy.js] PART B  async/await:              OK @ http://localhost:8877/index.js:185
+[     428ms] [LOG] [implementations/01-proxy.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8877/index.js:185
+[     428ms] [LOG] [implementations/01-proxy.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8877/index.js:185
+[     429ms] [LOG] [implementations/01-proxy.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8877/index.js:185
+[     429ms] [LOG] [implementations/01-proxy.js] PART E  shared promise, two scopes SHARED  (A saw undefined, B saw undefined) @ http://localhost:8877/index.js:185
+[     464ms] [LOG] [implementations/02-subclass.js] PART A  .then(callback):          OK @ http://localhost:8877/index.js:185
+[     464ms] [LOG] [implementations/02-subclass.js] PART B  async/await:              OK @ http://localhost:8877/index.js:185
+[     464ms] [LOG] [implementations/02-subclass.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8877/index.js:185
+[     464ms] [LOG] [implementations/02-subclass.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8877/index.js:185
+[     464ms] [LOG] [implementations/02-subclass.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8877/index.js:185
+[     464ms] [LOG] [implementations/02-subclass.js] PART E  shared promise, two scopes SHARED  (A saw undefined, B saw undefined) @ http://localhost:8877/index.js:185
+[     522ms] [LOG] [implementations/03-single-stamp.js] PART A  .then(callback):          OK @ http://localhost:8877/index.js:185
+[     522ms] [LOG] [implementations/03-single-stamp.js] PART B  async/await:              OK @ http://localhost:8877/index.js:185
+[     522ms] [LOG] [implementations/03-single-stamp.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8877/index.js:185
+[     523ms] [LOG] [implementations/03-single-stamp.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8877/index.js:185
+[     523ms] [LOG] [implementations/03-single-stamp.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8877/index.js:185
+[     523ms] [LOG] [implementations/03-single-stamp.js] PART E  shared promise, two scopes SHARED  (A saw undefined, B saw undefined) @ http://localhost:8877/index.js:185
+[     556ms] [LOG] [implementations/04-v4-sandwich-always.js] PART A  .then(callback):          OK @ http://localhost:8877/index.js:185
+[     556ms] [LOG] [implementations/04-v4-sandwich-always.js] PART B  async/await:              OK @ http://localhost:8877/index.js:185
+[     556ms] [LOG] [implementations/04-v4-sandwich-always.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8877/index.js:185
+[     556ms] [LOG] [implementations/04-v4-sandwich-always.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8877/index.js:185
+[     556ms] [LOG] [implementations/04-v4-sandwich-always.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8877/index.js:185
+[     556ms] [LOG] [implementations/04-v4-sandwich-always.js] PART E  shared promise, two scopes SHARED  (A saw undefined, B saw undefined) @ http://localhost:8877/index.js:185
+[     596ms] [LOG] [implementations/05-constructor-trap.js] PART A  .then(callback):          OK @ http://localhost:8877/index.js:185
+[     596ms] [LOG] [implementations/05-constructor-trap.js] PART B  async/await:              OK @ http://localhost:8877/index.js:185
+[     596ms] [LOG] [implementations/05-constructor-trap.js] PART C  await blip() (bare):      OK  (saw CTX) @ http://localhost:8877/index.js:185
+[     596ms] [LOG] [implementations/05-constructor-trap.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8877/index.js:185
+[     596ms] [LOG] [implementations/05-constructor-trap.js] PART D  await scoped from outside OK  (stayed clean) @ http://localhost:8877/index.js:185
+[     596ms] [LOG] [implementations/05-constructor-trap.js] PART E  shared promise, two scopes SHARED  (A saw "B", B saw undefined) @ http://localhost:8877/index.js:185
+[     638ms] [LOG] [implementations/06-one-shot-then.js] PART A  .then(callback):          OK @ http://localhost:8877/index.js:185
+[     638ms] [LOG] [implementations/06-one-shot-then.js] PART B  async/await:              OK @ http://localhost:8877/index.js:185
+[     638ms] [LOG] [implementations/06-one-shot-then.js] PART C  await blip() (bare):      OK  (saw CTX) @ http://localhost:8877/index.js:185
+[     638ms] [LOG] [implementations/06-one-shot-then.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8877/index.js:185
+[     638ms] [LOG] [implementations/06-one-shot-then.js] PART D  await scoped from outside OK  (stayed clean) @ http://localhost:8877/index.js:185
+[     638ms] [LOG] [implementations/06-one-shot-then.js] PART E  shared promise, two scopes OK  (A→A, B→B) @ http://localhost:8877/index.js:185

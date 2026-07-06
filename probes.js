@@ -85,7 +85,7 @@ const PARTS = {
             effect('A', () => consumer('A')),
             effect('B', () => consumer('B')),
         ]);
-        return seen; // ideal: { A: 'A', B: 'B' } — no impl achieves this yet
+        return seen; // ideal: { A: 'A', B: 'B' } — reached by v6 (one-shot then)
     },
 };
 

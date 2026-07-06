@@ -175,7 +175,11 @@ function renderPanel(impl, data) {
 
     const line = (msg, codeKey) => {
         const div = document.createElement('div');
-        div.className = 'log ' + (msg.includes('OK') ? 'ok' : /WRONG|ERROR|LOST|LEAK/.test(msg) ? 'wrong' : 'muted');
+        // Every probe verdict is a definite pass or fail: green if it says OK,
+        // red otherwise (WRONG / ERROR / LOST / LEAK / SHARED). No neutral state
+        // — an impl that misses a part's ideal fails that part, exactly as
+        // Part C already shows for the impls that can't solve bare composition.
+        div.className = 'log ' + (msg.includes('OK') ? 'ok' : 'wrong');
         if (codeKey) { div.classList.add('has-tip'); div.dataset.code = codeKey; }
         div.textContent = msg;
         body.appendChild(div);

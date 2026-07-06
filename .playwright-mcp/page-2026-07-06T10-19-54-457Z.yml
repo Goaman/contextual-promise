@@ -1,0 +1,69 @@
+- generic [active] [ref=f76e1]:
+  - heading "Promise Scope — every implementation, side by side" [level=1] [ref=f76e2]
+  - paragraph [ref=f76e3]:
+    - text: "A & B: two interleaved scopes S1 & S2 across a"
+    - code [ref=f76e4]: .then()
+    - text: chain and native
+    - code [ref=f76e5]: async/await
+    - text: "— OK = each continuation saw its own scope. C: does context survive one layer of async composition ("
+    - code [ref=f76e6]: something()
+    - text: awaits async
+    - code [ref=f76e7]: blip()
+    - text: )? A bare
+    - code [ref=f76e8]: await blip()
+    - text: awaits a native promise, invisible to stamp-based impls — but the await's
+    - code [ref=f76e9]: constructor
+    - text: lookup is observable, and v5's prototype-accessor trap captures the awaiter's context right at the suspension point. Re-stamping via
+    - code [ref=f76e10]: Promise.resolve(blip())
+    - text: "is recovered by all patched impls; naive recovers nothing. D: the flip side — awaiting a"
+    - emphasis [ref=f76e11]: scoped
+    - text: promise from
+    - emphasis [ref=f76e12]: outside
+    - text: any scope. Resolver-side designs (naive, v1–v4) leak the promise's scope into the outside awaiter's continuation; v5's awaiter-side capture resumes it natively (clean).
+  - generic [ref=f76e13]:
+    - generic [ref=f76e14]:
+      - generic [ref=f76e15]: naive rpc() (colleague strategy)
+      - generic [ref=f76e16]:
+        - generic [ref=f76e17]: "PART A .then(callback): OK"
+        - generic [ref=f76e18]: "PART B async/await: OK"
+        - generic [ref=f76e19]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f76e20]: "PART C await Promise.resolve(…): LOST (saw undefined)"
+        - generic [ref=f76e21]: PART D await scoped from outside LEAK (awaiter saw "S1")
+        - generic [ref=f76e22]: PART E shared promise, two scopes SHARED (A saw undefined, B saw undefined)
+    - generic [ref=f76e23]:
+      - generic [ref=f76e24]: 00-original.js (v4)
+      - generic [ref=f76e25]:
+        - generic [ref=f76e26]: "PART A .then(callback): OK"
+        - generic [ref=f76e27]: "PART B async/await: OK"
+        - generic [ref=f76e28]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f76e29]: "PART C await Promise.resolve(…): OK (saw CTX)"
+        - generic [ref=f76e30]: PART D await scoped from outside LEAK (awaiter saw "S1")
+        - generic [ref=f76e31]: PART E shared promise, two scopes SHARED (A saw undefined, B saw undefined)
+    - generic [ref=f76e32]:
+      - generic [ref=f76e33]: 01-proxy.js (v1)
+      - generic [ref=f76e34]:
+        - generic [ref=f76e35]: "PART A .then(callback): OK"
+        - generic [ref=f76e36]: "PART B async/await: OK"
+        - generic [ref=f76e37]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f76e38]: "PART C await Promise.resolve(…): OK (saw CTX)"
+        - generic [ref=f76e39]: PART D await scoped from outside LEAK (awaiter saw "S1")
+        - generic [ref=f76e40]: PART E shared promise, two scopes SHARED (A saw undefined, B saw undefined)
+    - generic [ref=f76e41]:
+      - generic [ref=f76e42]: 02-subclass.js (v2)
+      - generic [ref=f76e43]:
+        - generic [ref=f76e44]: "PART A .then(callback): OK"
+        - generic [ref=f76e45]: "PART B async/await: OK"
+        - generic [ref=f76e46]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f76e47]: "PART C await Promise.resolve(…): OK (saw CTX)"
+        - generic [ref=f76e48]: PART D await scoped from outside LEAK (awaiter saw "S1")
+        - generic [ref=f76e49]: PART E shared promise, two scopes SHARED (A saw undefined, B saw undefined)
+  - heading "Benchmarks" [level=2] [ref=f76e50]
+  - paragraph [ref=f76e51]:
+    - text: Same scenarios as
+    - code [ref=f76e52]: bench/bench-one.js
+    - text: ", run in-browser. Each implementation runs in its own iframe; a pristine native baseline (protectors intact) is measured in a lib-free iframe, and each cell shows the implementation's median ms and its ratio vs that baseline."
+    - code [ref=f76e53]: naive
+    - text: is excluded — it has no
+    - code [ref=f76e54]: Promise
+    - text: "drop-in. Heads-up: this hammers the main thread for a few seconds."
+  - button "Run benchmarks" [ref=f76e56] [cursor=pointer]
