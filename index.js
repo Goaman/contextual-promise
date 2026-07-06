@@ -15,77 +15,119 @@ const IMPLS = [
 
 // ---------------------------------------------------------------------------
 // Hover-for-source: the exact code behind each demo part / benchmark scenario,
-// shown in a syntax-highlighted tooltip. Keys match the data-code attributes
-// set on the part lines (renderPanel) and the scenario headers (renderBenchTable).
+// shown in a syntax-highlighted tooltip. These snippets are written as real
+// functions (so the editor lints & highlights them) and their *bodies* are
+// pulled out with Function.prototype.toString at hover time — never executed,
+// so the free identifiers (effect, rpc, P, N, …) don't need to be in scope.
+// The demo-part snippets mirror runnerSource(); the scenario snippets mirror
+// mkScenarios() in bench/bench-one.js.
 // ---------------------------------------------------------------------------
-const CODE = {
-    // demo parts
-    A: `// PART A — each scope's .then() continuation must see its own scope
-const a = effect('S1', () => rpc().then(() => seen.S1 = getCurrent()));
-const b = effect('S2', () => rpc().then(() => seen.S2 = getCurrent()));
-await Promise.all([a, b]);   // expect: S1 saw "S1", S2 saw "S2"`,
-    B: `// PART B — each native async/await continuation must see its own scope
-const a = effect('S1', () => (async () => {
-  await rpc();
-  seen.S1 = getCurrent();
-})());
-const b = effect('S2', () => (async () => {
-  await rpc();
-  seen.S2 = getCurrent();
-})());
-await Promise.all([a, b]);   // expect: S1 saw "S1", S2 saw "S2"`,
-    Cbare: `// PART C (bare) — does context survive ONE layer of async composition?
-// blip()'s promise is a native %Promise%, invisible to stamp-based impls.
-async function blip()     { await rpc();  return getCurrent(); }
-async function nestBare() { await blip(); return getCurrent(); }
 
-out.Cbare = await effect('CTX', () => nestBare());   // expect: "CTX"`,
-    Crestamp: `// PART C (re-stamp) — feed the intermediate through a tracked constructor
-async function blip() { await rpc(); return getCurrent(); }
-async function nestRestamp() {
-  await Promise.resolve(blip());   // Promise.resolve() is patched -> stamped
-  return getCurrent();
+/* eslint-disable no-undef, no-unused-vars */
+async function part_A() {
+    // each scope's .then() continuation must see its own scope
+    const a = effect('S1', () => rpc().then(() => (seen.S1 = getCurrent())));
+    const b = effect('S2', () => rpc().then(() => (seen.S2 = getCurrent())));
+    await Promise.all([a, b]); // expect: S1 saw "S1", S2 saw "S2"
 }
-out.Crestamp = await effect('CTX', () => nestRestamp());   // expect: "CTX"`,
-    D: `// PART D — await a SCOPED promise from OUTSIDE any scope; must stay clean
-await effect('S1', () => rpc());
-const leaked = getCurrent();   // expect: undefined (no leak)`,
+async function part_B() {
+    // each native async/await continuation must see its own scope
+    const a = effect('S1', () => (async () => {
+        await rpc();
+        seen.S1 = getCurrent();
+    })());
+    const b = effect('S2', () => (async () => {
+        await rpc();
+        seen.S2 = getCurrent();
+    })());
+    await Promise.all([a, b]); // expect: S1 saw "S1", S2 saw "S2"
+}
+async function part_Cbare() {
+    // does context survive ONE layer of async composition? (bare await)
+    // blip()'s promise is a native %Promise%, invisible to stamp-based impls.
+    async function blip() { await rpc(); return getCurrent(); }
+    async function nestBare() { await blip(); return getCurrent(); }
 
-    // benchmark scenarios (bodies as measured in bench/bench-one.js)
-    awaitLoop: `effect('bench', async () => {
-  let s = 0;
-  for (let i = 0; i < N; i++)
-    s += await P.resolve(1);       // N bare awaits in one scope
-});`,
-    thenChain: `effect('bench', () => {
-  let p = P.resolve(0);
-  for (let i = 0; i < N; i++)
-    p = p.then((v) => v + 1);      // N-deep .then() chain
-  return p;
-});`,
-    fanout: `effect('bench', () => {
-  const a = new Array(N);
-  for (let i = 0; i < N; i++)
-    a[i] = P.resolve(i).then((v) => v + 1);   // N independent promises
-  return P.all(a);
-});`,
-    awaitWork: `effect('bench', async () => {
-  let s = 0;
-  for (let i = 0; i < N_RPC; i++) {
-    s += await P.resolve(1);
-    s += work(2000) % 2;           // ~1-2us of real CPU per hop
-  }
-});`,
-    rpcTimer: `effect('bench', () => {
-  const one = async () => {
-    await new P((r) => setTimeout(r, 0));   // real macrotask boundary
-    return 1;
-  };
-  const a = new Array(N_RPC);
-  for (let i = 0; i < N_RPC; i++) a[i] = one();
-  return P.all(a);
-});`,
+    out.Cbare = await effect('CTX', () => nestBare()); // expect: "CTX"
+}
+async function part_Crestamp() {
+    // same, but re-stamp the intermediate through a tracked constructor
+    async function blip() { await rpc(); return getCurrent(); }
+    async function nestRestamp() {
+        await Promise.resolve(blip()); // Promise.resolve() is patched -> stamped
+        return getCurrent();
+    }
+    out.Crestamp = await effect('CTX', () => nestRestamp()); // expect: "CTX"
+}
+async function part_D() {
+    // await a SCOPED promise from OUTSIDE any scope; must stay clean
+    await effect('S1', () => rpc());
+    const leaked = getCurrent(); // expect: undefined (no leak)
+}
+
+function scen_awaitLoop() {
+    effect('bench', async () => {
+        let s = 0;
+        for (let i = 0; i < N; i++)
+            s += await P.resolve(1); // N bare awaits in one scope
+    });
+}
+function scen_thenChain() {
+    effect('bench', () => {
+        let p = P.resolve(0);
+        for (let i = 0; i < N; i++)
+            p = p.then((v) => v + 1); // N-deep .then() chain
+        return p;
+    });
+}
+function scen_fanout() {
+    effect('bench', () => {
+        const a = new Array(N);
+        for (let i = 0; i < N; i++)
+            a[i] = P.resolve(i).then((v) => v + 1); // N independent promises
+        return P.all(a);
+    });
+}
+function scen_awaitWork() {
+    effect('bench', async () => {
+        let s = 0;
+        for (let i = 0; i < N_RPC; i++) {
+            s += await P.resolve(1);
+            s += work(2000) % 2; // ~1-2us of real CPU per hop
+        }
+    });
+}
+function scen_rpcTimer() {
+    effect('bench', () => {
+        const one = async () => {
+            await new P((r) => setTimeout(r, 0)); // real macrotask boundary
+            return 1;
+        };
+        const a = new Array(N_RPC);
+        for (let i = 0; i < N_RPC; i++) a[i] = one();
+        return P.all(a);
+    });
+}
+/* eslint-enable no-undef, no-unused-vars */
+
+// data-code key -> the function whose body is the snippet to display.
+const CODE = {
+    A: part_A, B: part_B, Cbare: part_Cbare, Crestamp: part_Crestamp, D: part_D,
+    awaitLoop: scen_awaitLoop, thenChain: scen_thenChain, fanout: scen_fanout,
+    awaitWork: scen_awaitWork, rpcTimer: scen_rpcTimer,
 };
+
+// The snippet is the function's body: everything between the first `{` and the
+// last `}`, with the common leading indentation stripped.
+function snippetOf(fn) {
+    const src = fn.toString();
+    const inner = src.slice(src.indexOf('{') + 1, src.lastIndexOf('}'));
+    const lines = inner.replace(/^\n+|\s+$/g, '').split('\n');
+    const indent = Math.min(
+        ...lines.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length)
+    );
+    return lines.map((l) => l.slice(indent)).join('\n');
+}
 
 // Tiny dependency-free JS highlighter (CSP / file:// friendly): escape, then
 // tag comments, strings, keywords, numbers, and call-position identifiers.
@@ -122,9 +164,9 @@ function positionTip(el) {
 document.addEventListener('mouseover', (e) => {
     const el = e.target.closest('.has-tip');
     if (!el) return;
-    const code = CODE[el.dataset.code];
-    if (!code) return;
-    codeTip.innerHTML = highlight(code);
+    const fn = CODE[el.dataset.code];
+    if (!fn) return;
+    codeTip.innerHTML = highlight(snippetOf(fn));
     codeTip.classList.add('show');
     positionTip(el);
 });
