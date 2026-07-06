@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Promise Scope Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 2rem; }
+    h1 { color: #9cdcfe; margin-bottom: 0.5rem; font-size: 1.2rem; }
+    h2 { color: #9cdcfe; margin: 2rem 0 0.5rem; font-size: 1.05rem; }
+    p.sub { color: #808080; margin-bottom: 1.5rem; font-size: 0.85rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .panel { background: #252526; border: 1px solid #3c3c3c; border-radius: 6px; overflow: hidden; }
+    .panel-title { background: #2d2d2d; padding: 0.6rem 1rem; color: #9cdcfe; font-size: 0.9rem; border-bottom: 1px solid #3c3c3c; }
+    .panel-body { padding: 1rem; min-height: 90px; overflow-x: auto; }
+    .log { margin: 0.25rem 0; font-size: 0.85rem; white-space: pre; }
+    .ok { color: #4ec9b0; font-weight: bold; }
+    .wrong { color: #f44747; font-weight: bold; }
+    .muted { color: #808080; }
+    button { font-family: monospace; font-size: 0.85rem; background: #0e639c; color: #fff; border: none;
+             border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer; }
+    button:hover:not(:disabled) { background: #1177bb; }
+    button:disabled { background: #3c3c3c; color: #808080; cursor: default; }
+    #bench-status { color: #808080; font-size: 0.8rem; margin-left: 1rem; }
+    table.bench { border-collapse: collapse; margin-top: 0.75rem; font-size: 0.8rem; }
+    table.bench th, table.bench td { border: 1px solid #3c3c3c; padding: 0.35rem 0.7rem; text-align: right; white-space: nowrap; }
+    table.bench th { background: #2d2d2d; color: #9cdcfe; }
+    table.bench td.mode, table.bench th.mode { text-align: left; color: #d4d4d4; }
+    table.bench caption { text-align: left; color: #808080; font-size: 0.8rem; margin: 1rem 0 0.25rem; caption-side: top; }
+    .ratio-good { color: #4ec9b0; } .ratio-mid { color: #dcdcaa; } .ratio-bad { color: #f44747; }
+    /* hover-for-source affordance */
+    .has-tip { cursor: help; text-decoration: underline dotted; text-decoration-color: #6a6a6a; text-underline-offset: 3px; }
+    th.has-tip:hover, .log.has-tip:hover { filter: brightness(1.25); }
+    #code-tip { position: fixed; z-index: 1000; max-width: min(92vw, 640px); background: #1b1b1b;
+                border: 1px solid #454545; border-radius: 6px; padding: 0.6rem 0.85rem;
+                box-shadow: 0 8px 24px rgba(0,0,0,.55); display: none; pointer-events: none;
+                white-space: pre; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; color: #d4d4d4; }
+    #code-tip.show { display: block; }
+    .tok-kw  { color: #c586c0; } .tok-str { color: #ce9178; } .tok-com { color: #6a9955; font-style: italic; }
+    .tok-num { color: #b5cea8; } .tok-fn  { color: #dcdcaa; }
+  </style>
+</head>
+<body>
+  <h1>Promise Scope — every implementation, side by side</h1>
+  <p class="sub">A &amp; B: two interleaved scopes S1 &amp; S2 across a <code>.then()</code> chain and native <code>async/await</code> — OK = each continuation saw its own scope. C: does context survive one layer of async composition (<code>something()</code> awaits async <code>blip()</code>)? A bare <code>await blip()</code> awaits a native promise, invisible to stamp-based impls — but the await's <code>constructor</code> lookup is observable, and v5's prototype-accessor trap captures the awaiter's context right at the suspension point. Re-stamping via <code>Promise.resolve(blip())</code> is recovered by all patched impls; naive recovers nothing. D: the flip side — awaiting a <em>scoped</em> promise from <em>outside</em> any scope. Resolver-side designs (naive, v1–v4) leak the promise's scope into the outside awaiter's continuation; v5's awaiter-side capture resumes it natively (clean).</p>
+  <div class="grid" id="panels"></div>
+
+  <h2>Benchmarks</h2>
+  <p class="sub">Same scenarios as <code>bench/bench-one.js</code>, run in-browser. Each implementation runs in its own iframe; a pristine native baseline (protectors intact) is measured in a lib-free iframe, and each cell shows the implementation's median ms and its ratio vs that baseline. <code>naive</code> is excluded — it has no <code>Promise</code> drop-in. Heads-up: this hammers the main thread for a few seconds.</p>
+  <div>
+    <button id="run-bench">Run benchmarks</button>
+    <span id="bench-status"></span>
+  </div>
+  <div id="bench-results"></div>
+
+  <div id="code-tip"></div>
+  <script src="index.js"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+- generic [active] [ref=f29e1]:
+  - heading "Promise Scope — every implementation, side by side" [level=1] [ref=f29e2]
+  - paragraph [ref=f29e3]:
+    - text: "A & B: two interleaved scopes S1 & S2 across a"
+    - code [ref=f29e4]: .then()
+    - text: chain and native
+    - code [ref=f29e5]: async/await
+    - text: "— OK = each continuation saw its own scope. C: does context survive one layer of async composition ("
+    - code [ref=f29e6]: something()
+    - text: awaits async
+    - code [ref=f29e7]: blip()
+    - text: )? A bare
+    - code [ref=f29e8]: await blip()
+    - text: awaits a native promise, invisible to stamp-based impls — but the await's
+    - code [ref=f29e9]: constructor
+    - text: lookup is observable, and v5's prototype-accessor trap captures the awaiter's context right at the suspension point. Re-stamping via
+    - code [ref=f29e10]: Promise.resolve(blip())
+    - text: "is recovered by all patched impls; naive recovers nothing. D: the flip side — awaiting a"
+    - emphasis [ref=f29e11]: scoped
+    - text: promise from
+    - emphasis [ref=f29e12]: outside
+    - text: any scope. Resolver-side designs (naive, v1–v4) leak the promise's scope into the outside awaiter's continuation; v5's awaiter-side capture resumes it natively (clean).
+  - generic [ref=f29e13]:
+    - generic [ref=f29e14]:
+      - generic [ref=f29e15]: naive rpc() (colleague strategy)
+      - generic [ref=f29e16]:
+        - generic [ref=f29e17]: "PART A .then(callback): OK"
+        - generic [ref=f29e18]: "PART B async/await: OK"
+        - generic [ref=f29e19]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f29e20]: "PART C await Promise.resolve(…): LOST (saw undefined)"
+        - generic [ref=f29e21]: PART D await scoped from outside LEAK (awaiter saw "S1")
+    - generic [ref=f29e22]:
+      - generic [ref=f29e23]: 00-original.js (v4)
+      - generic [ref=f29e24]:
+        - generic [ref=f29e25]: "PART A .then(callback): OK"
+        - generic [ref=f29e26]: "PART B async/await: OK"
+        - generic [ref=f29e27]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f29e28]: "PART C await Promise.resolve(…): OK (saw CTX)"
+        - generic [ref=f29e29]: PART D await scoped from outside LEAK (awaiter saw "S1")
+    - generic [ref=f29e30]:
+      - generic [ref=f29e31]: 01-proxy.js (v1)
+      - generic [ref=f29e32]:
+        - generic [ref=f29e33]: "PART A .then(callback): OK"
+        - generic [ref=f29e34]: "PART B async/await: OK"
+        - generic [ref=f29e35]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f29e36]: "PART C await Promise.resolve(…): OK (saw CTX)"
+        - generic [ref=f29e37]: PART D await scoped from outside LEAK (awaiter saw "S1")
+    - generic [ref=f29e38]:
+      - generic [ref=f29e39]: 02-subclass.js (v2)
+      - generic [ref=f29e40]:
+        - generic [ref=f29e41]: "PART A .then(callback): OK"
+        - generic [ref=f29e42]: "PART B async/await: OK"
+        - generic [ref=f29e43]: "PART C await blip() (bare): LOST (saw undefined)"
+        - generic [ref=f29e44]: "PART C await Promise.resolve(…): OK (saw CTX)"
+        - generic [ref=f29e45]: PART D await scoped from outside LEAK (awaiter saw "S1")
+  - heading "Benchmarks" [level=2] [ref=f29e46]
+  - paragraph [ref=f29e47]:
+    - text: Same scenarios as
+    - code [ref=f29e48]: bench/bench-one.js
+    - text: ", run in-browser. Each implementation runs in its own iframe; a pristine native baseline (protectors intact) is measured in a lib-free iframe, and each cell shows the implementation's median ms and its ratio vs that baseline."
+    - code [ref=f29e49]: naive
+    - text: is excluded — it has no
+    - code [ref=f29e50]: Promise
+    - text: "drop-in. Heads-up: this hammers the main thread for a few seconds."
+  - button "Run benchmarks" [ref=f29e52] [cursor=pointer]

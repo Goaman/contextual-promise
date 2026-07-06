@@ -5,10 +5,10 @@ across `.then` chains **and native `async/await`**, with skip-callback
 cancellation — plus every experiment and benchmark used to design it.
 
 ```
-demo.html / demo.js              side-by-side demo: runs every implementation below
+index.html / index.js              side-by-side demo: runs every implementation below
 implementations/00-original.js   stamp-based implementation ("v4") — see below
 implementations/05-constructor-trap.js  current ("v5"): v4 + awaiter-side constructor trap — bare `await` works
-implementations/naive.js         naive userland thenable (no Promise patch) — the strawman
+implementations/00-naive.js         naive userland thenable (no Promise patch) — the strawman
 implementations/01-proxy.js      v1: Proxy + global Promise.prototype.then patch
 implementations/02-subclass.js   v2: class ContextPromise extends Promise
 implementations/03-single-stamp.js  v3: constructor-as-context stamp + global then patch

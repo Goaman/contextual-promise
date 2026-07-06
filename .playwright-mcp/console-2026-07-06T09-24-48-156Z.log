@@ -1,0 +1,36 @@
+[     449ms] [LOG] [implementations/00-naive.js] PART A  .then(callback):          OK @ http://localhost:8321/index.js:135
+[     450ms] [LOG] [implementations/00-naive.js] PART B  async/await:              OK @ http://localhost:8321/index.js:135
+[     450ms] [LOG] [implementations/00-naive.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8321/index.js:135
+[     451ms] [LOG] [implementations/00-naive.js] PART C  await Promise.resolve(…): LOST  (saw undefined) @ http://localhost:8321/index.js:135
+[     451ms] [LOG] [implementations/00-naive.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8321/index.js:135
+[     489ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8321/favicon.ico:0
+[     491ms] [LOG] [implementations/00-original.js] PART A  .then(callback):          OK @ http://localhost:8321/index.js:135
+[     491ms] [LOG] [implementations/00-original.js] PART B  async/await:              OK @ http://localhost:8321/index.js:135
+[     491ms] [LOG] [implementations/00-original.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8321/index.js:135
+[     491ms] [LOG] [implementations/00-original.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8321/index.js:135
+[     492ms] [LOG] [implementations/00-original.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8321/index.js:135
+[     538ms] [LOG] [implementations/01-proxy.js] PART A  .then(callback):          OK @ http://localhost:8321/index.js:135
+[     538ms] [LOG] [implementations/01-proxy.js] PART B  async/await:              OK @ http://localhost:8321/index.js:135
+[     538ms] [LOG] [implementations/01-proxy.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8321/index.js:135
+[     538ms] [LOG] [implementations/01-proxy.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8321/index.js:135
+[     538ms] [LOG] [implementations/01-proxy.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8321/index.js:135
+[     581ms] [LOG] [implementations/02-subclass.js] PART A  .then(callback):          OK @ http://localhost:8321/index.js:135
+[     581ms] [LOG] [implementations/02-subclass.js] PART B  async/await:              OK @ http://localhost:8321/index.js:135
+[     581ms] [LOG] [implementations/02-subclass.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8321/index.js:135
+[     581ms] [LOG] [implementations/02-subclass.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8321/index.js:135
+[     581ms] [LOG] [implementations/02-subclass.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8321/index.js:135
+[     630ms] [LOG] [implementations/03-single-stamp.js] PART A  .then(callback):          OK @ http://localhost:8321/index.js:135
+[     630ms] [LOG] [implementations/03-single-stamp.js] PART B  async/await:              OK @ http://localhost:8321/index.js:135
+[     630ms] [LOG] [implementations/03-single-stamp.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8321/index.js:135
+[     630ms] [LOG] [implementations/03-single-stamp.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8321/index.js:135
+[     631ms] [LOG] [implementations/03-single-stamp.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8321/index.js:135
+[     664ms] [LOG] [implementations/04-v4-sandwich-always.js] PART A  .then(callback):          OK @ http://localhost:8321/index.js:135
+[     664ms] [LOG] [implementations/04-v4-sandwich-always.js] PART B  async/await:              OK @ http://localhost:8321/index.js:135
+[     664ms] [LOG] [implementations/04-v4-sandwich-always.js] PART C  await blip() (bare):      LOST  (saw undefined) @ http://localhost:8321/index.js:135
+[     664ms] [LOG] [implementations/04-v4-sandwich-always.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8321/index.js:135
+[     664ms] [LOG] [implementations/04-v4-sandwich-always.js] PART D  await scoped from outside LEAK  (awaiter saw "S1") @ http://localhost:8321/index.js:135
+[     710ms] [LOG] [implementations/05-constructor-trap.js] PART A  .then(callback):          OK @ http://localhost:8321/index.js:135
+[     710ms] [LOG] [implementations/05-constructor-trap.js] PART B  async/await:              OK @ http://localhost:8321/index.js:135
+[     710ms] [LOG] [implementations/05-constructor-trap.js] PART C  await blip() (bare):      OK  (saw CTX) @ http://localhost:8321/index.js:135
+[     710ms] [LOG] [implementations/05-constructor-trap.js] PART C  await Promise.resolve(…): OK  (saw CTX) @ http://localhost:8321/index.js:135
+[     710ms] [LOG] [implementations/05-constructor-trap.js] PART D  await scoped from outside OK  (stayed clean) @ http://localhost:8321/index.js:135
